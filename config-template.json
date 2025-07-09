@@ -1,0 +1,14 @@
+{
+  "using-console": "cmd",
+  
+  "commands": [
+    {
+      "name": "Up docker with console",
+      "command": "docker compose up"
+    },
+    {
+      "name": "Restart docker",
+      "command": "docker compose restart"
+    }
+  ]
+}
