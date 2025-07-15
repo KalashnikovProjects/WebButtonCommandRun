@@ -1,14 +1,23 @@
 package main
 
 import (
-	"fmt"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/json_storage"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/server"
+	"github.com/gofiber/fiber/v2/log"
 )
 
 func main() {
-	s := "gopher"
-	fmt.Println("Hello and welcome, %s!", s)
-
-	for i := 1; i <= 5; i++ {
-		fmt.Println("i =", 100/i)
+	err := config.InitConfigs("./", ".env")
+	if err != nil {
+		log.Fatalw("Error while init configs", err)
+	}
+	err = json_storage.CreateUserConfigIfInvalid()
+	if err != nil {
+		log.Fatalw("Error while initialising user config", err)
+	}
+	err = server.RunApp()
+	if err != nil {
+		log.Fatalw("Error while running server", err)
 	}
 }
