@@ -1,1 +1,2 @@
-Move web/template/static -> web/static
+1. Separate Сlose button to Disconnect and Stop on fronted
+On backend save terminal sessions on Disconnect and resume it.

@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link href="static/css/base.css" rel="stylesheet" crossorigin="anonymous">
+    <link href="../static/css/base.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"/>
-    <script async src="static/js/base.js" crossorigin="anonymous"></script>
+    <script async src="../static/js/base.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit/lib/xterm-addon-fit.min.js" defer></script>
-    <script src="static/js/terminal.js" defer></script>
+    <script src="../static/js/terminal.js" defer></script>
 
     <title>Command Run</title>
 </head>
@@ -15,7 +15,7 @@
     <div>hidden</div>
     <h1 class="page-title">Web Button Command Run</h1>
     <button id="open-menu-button" class="round-button">
-        <img width="100%" src="static/vectors/arrow.svg" alt="Select command"/>
+        <img width="100%" src="../static/vectors/arrow.svg" alt="Select command"/>
     </button>
 </header>
 <div id="main-section">
@@ -36,7 +36,7 @@
         <ul class="command-list">
             <li>
                 <button class="round-button">
-                    <img width="80%" src="static/vectors/arrow.svg" alt="Select command"/>
+                    <img width="80%" src="../static/vectors/arrow.svg" alt="Select command"/>
                 </button>
                 <p class="command-text command-name" onWheel="smoothHorizontalScroll(event)">
                     Super nice command
@@ -44,7 +44,7 @@
             </li>
             <li>
                 <button class="round-button selected">
-                    <img width="80%" src="static/vectors/selected.svg" alt="Select command"/>
+                    <img width="80%" src="../static/vectors/selected.svg" alt="Select command"/>
                 </button>
                 <p class="command-text command-name" onWheel="smoothHorizontalScroll(event)">
                     VSCode
@@ -52,7 +52,7 @@
             </li>
             <li>
                 <button class="round-button">
-                    <img width="100%" src="static/vectors/plus.svg" alt="Add new command"/>
+                    <img width="100%" src="../static/vectors/plus.svg" alt="Add new command"/>
                 </button>
                 <p class="command-text command-name" onWheel="smoothHorizontalScroll(event)">
                     Add new
@@ -63,7 +63,7 @@
 </div>
 <div class="big-run-button-container">
     <button id="big-run-button" class="round-button">
-        <img src="static/vectors/arrow.svg" alt="Run command"/>
+        <img src="../static/vectors/arrow.svg" alt="Run command"/>
     </button>
     <div class="command-info">
         <label for="main-command-input">Command</label>
@@ -74,7 +74,7 @@
     </div>
 </div>
 <div id="using-console-indicator" class="using-console-indicator">
-    using sh <img src="static/vectors/console-bash.svg" alt=""/>
+    using sh <img src="../static/vectors/console-bash.svg" alt=""/>
 </div>
 <div id="right-menu" class="right-menu hidden">
     <button id="import-config-button" class="normal-button">
