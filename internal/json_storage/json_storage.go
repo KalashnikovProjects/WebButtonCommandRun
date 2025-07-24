@@ -8,12 +8,21 @@ import (
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/gofiber/fiber/v2/log"
 	"io/fs"
+	"math/rand"
 	"os"
 )
 
 var ErrCommandIdOutOfRange = errors.New("commands id out of range")
 
-var UserConfig entities.UserConfig
+var UserConfig *entities.UserConfig
+
+func setDefaultNames() {
+	for i := 0; i < len(UserConfig.Commands); i++ {
+		if UserConfig.Commands[i].Name == "" {
+			UserConfig.Commands[i].Name = fmt.Sprintf("Command %d", rand.Intn(100))
+		}
+	}
+}
 
 func updateFile() error {
 	file, err := os.OpenFile(config.Config.UserConfigPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
@@ -33,7 +42,7 @@ func updateFile() error {
 
 func CreateUserConfigIfInvalid() error {
 	data, err := os.ReadFile(config.Config.UserConfigPath)
-	UserConfig = entities.UserConfig{
+	UserConfig = &entities.UserConfig{
 		UsingConsole: config.Config.Console,
 		Commands:     make([]entities.Command, 0),
 	}
@@ -42,7 +51,7 @@ func CreateUserConfigIfInvalid() error {
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("error while creating user config file: %w", err)
 	}
-	data, err = os.ReadFile(config.Config.UserConfigPath)
+	setDefaultNames()
 	if err = updateFile(); err != nil {
 		return fmt.Errorf("error while creating user config file: %w", err)
 	}
@@ -50,6 +59,9 @@ func CreateUserConfigIfInvalid() error {
 }
 
 func AppendCommand(command entities.Command) error {
+	if command.Name == "" {
+		command.Name = fmt.Sprintf("Command %d", rand.Intn(100))
+	}
 	UserConfig.Commands = append(UserConfig.Commands, command)
 	err := updateFile()
 	if err != nil {
@@ -85,6 +97,9 @@ func UpdateCommand(commandId uint, newCommand entities.Command) error {
 	if commandId >= uint(len(UserConfig.Commands)) {
 		return ErrCommandIdOutOfRange
 	}
+	if newCommand.Name == "" {
+		newCommand.Name = fmt.Sprintf("Command %d", rand.Intn(100))
+	}
 	UserConfig.Commands[commandId] = newCommand
 	err := updateFile()
 	if err != nil {
@@ -94,11 +109,12 @@ func UpdateCommand(commandId uint, newCommand entities.Command) error {
 }
 
 func GetUserConfig() entities.UserConfig {
-	return UserConfig
+	return *UserConfig
 }
 
 func SetUserConfig(newUserConfig entities.UserConfig) error {
-	UserConfig = newUserConfig
+	UserConfig = &newUserConfig
+	setDefaultNames()
 	err := updateFile()
 	if err != nil {
 		return err

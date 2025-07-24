@@ -38,7 +38,7 @@ func PatchCommand(commandId uint, newCommand entities.Command) error {
 	if !changed {
 		return nil
 	}
-	return json_storage.UpdateCommand(commandId, newCommand)
+	return json_storage.UpdateCommand(commandId, old)
 }
 
 func PutCommand(commandId uint, newCommand entities.Command) error {

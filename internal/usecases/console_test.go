@@ -2,34 +2,51 @@ package usecases
 
 import (
 	"context"
+	"fmt"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
+	"github.com/acarl005/stripansi"
 	"github.com/gofiber/fiber/v2/log"
+	"os"
 	"strings"
 	"testing"
 	"time"
 )
 
+func normalizeOutput(out string) string {
+	return strings.Replace(strings.Replace(strings.Replace(stripansi.Strip(out), "\n\r", "\r", -1), "\r\n", "\r", -1), "\n", "\r", -1)
+}
+
 func TestRunCommand_Success(t *testing.T) {
+	_ = config.InitConfigs("../..", "testing.env")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	input, output, err := RunCommand(ctx, "echo hello")
+	command, err := RunCommand(ctx, "echo hello", entities.CommandOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if input == nil || output == nil {
-		t.Fatal("input or output channel is nil")
+	if command.Input == nil || command.Output == nil {
+		t.Fatal("command.Input or output channel is nil")
 	}
-	select {
-	case line, ok := <-output:
-		if !ok {
-			t.Fatal("output channel closed unexpectedly")
+	result := ""
+	ok := true
+	var dataOut string
+	for ok {
+		select {
+		case dataOut, ok = <-command.Output:
+			if !ok {
+				break
+			}
+			result += dataOut
+		case <-time.After(1 * time.Second):
+			t.Fatal("timeout waiting for result")
+			return
 		}
-		if line != "hello" && line != "hello\r" { // Windows/Unix
-			t.Errorf("unexpected output: %q", line)
-		}
-	case <-time.After(1 * time.Second):
-		t.Fatal("timeout waiting for output")
+	}
+	out := normalizeOutput(result)
+	if out != "hello\r" {
+		t.Fatalf("unexpected output: '%q', need 'hello\\r'", out)
 	}
 }
 
@@ -38,33 +55,128 @@ func TestRunCommand_InvalidCommand(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	_, output, err := RunCommand(ctx, "nonexistentcommand1234")
+	command, err := RunCommand(ctx, "nonexistentcommand1234", entities.CommandOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	outputStr := ""
-	for data := range output {
-		outputStr += data
+	result := ""
+	ok := true
+	var dataOut string
+	for ok {
+		select {
+		case dataOut, ok = <-command.Output:
+			if !ok {
+				break
+			}
+			result += dataOut
+		case <-time.After(1 * time.Second):
+			t.Fatal("timeout waiting for result")
+			return
+		}
 	}
-	log.Info("Not found command output:", outputStr)
-	if !strings.Contains(outputStr, "nonexistentcommand1234") {
-		t.Fatalf("wrong output, must command not finded message, got %s", outputStr)
+	out := normalizeOutput(result)
+	if !strings.Contains(out, "nonexistentcommand1234") {
+		t.Fatalf("wrong output, need command not finded message, got %s", out)
 	}
 }
 
 func TestRunCommand_ContextCancel(t *testing.T) {
+	_ = config.InitConfigs("../..", "testing.env")
 	ctx, cancel := context.WithCancel(context.Background())
-	_, output, err := RunCommand(ctx, "ping 127.0.0.1")
+	command, err := RunCommand(ctx, "ping 127.0.0.1", entities.CommandOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	cancel()
+	_, ok := <-command.Output
+	if !ok {
+		return
+	}
 	select {
-	case _, ok := <-output:
+	case _, ok := <-command.Output:
 		if ok {
-			t.Error("expected output channel to be closed after context cancel")
+			t.Error("output channel not closed or command not finished")
 		}
 	case <-time.After(1 * time.Second):
 		t.Error("timeout waiting for output channel to close after context cancel")
+	}
+}
+
+func TestRunCommand_PythonInteractive(t *testing.T) {
+	_ = config.InitConfigs("../..", "testing.env")
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	command, err := RunCommand(ctx, "python", entities.CommandOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if command.Input == nil || command.Output == nil {
+		t.Fatal("command.Input or output channel is nil")
+	}
+	command.Input <- "1+2\r"
+	<-time.After(1 * time.Second)
+	command.Input <- "exit()\r"
+	result := ""
+	ok := true
+	var dataOut string
+	for ok {
+		select {
+		case dataOut, ok = <-command.Output:
+			if !ok {
+				break
+			}
+			result += dataOut
+		case <-time.After(1 * time.Second):
+			log.Debug(normalizeOutput(result))
+			t.Fatal("timeout waiting for result")
+			return
+		}
+	}
+	out := normalizeOutput(result)
+	need := ">>> 1+2\r3\r>>>\r>>> exit()\r"
+	if !strings.HasSuffix(out, need) {
+		t.Fatalf("unexpected output suffig: '%q', need '%q'", out, need)
+	}
+}
+
+func TestRunCommand_CopyCon(t *testing.T) {
+	_ = config.InitConfigs("../..", "testing.env")
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	tmpFile, err := os.CreateTemp("", "testfile_*.txt")
+	err = tmpFile.Close()
+	if err != nil {
+		t.Errorf("cant close tmpFile %v", err)
+	}
+	command, err := RunCommand(ctx, fmt.Sprintf("copy con %s", tmpFile.Name()), entities.CommandOptions{})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if command.Input == nil || command.Output == nil {
+		t.Fatal("input or output channel is nil")
+	}
+	inputTestText := "Hello from copy con!\r"
+	command.Input <- inputTestText
+	command.Input <- "\x1A\r"
+	ok := true
+	for ok {
+		select {
+		case _, ok = <-command.Output:
+			if !ok {
+				break
+			}
+		case <-time.After(1 * time.Second):
+			t.Fatal("timeout waiting for result")
+			return
+		}
+	}
+	tmpFileContent, err := os.ReadFile(tmpFile.Name())
+	if err != nil {
+		t.Fatalf("error while reading temp file with output: %v", err)
+	}
+	out := normalizeOutput(string(tmpFileContent))
+	if out != inputTestText {
+		t.Fatalf("file editing wrong answer. expected: %q, got %q", inputTestText, out)
 	}
 }

@@ -7,14 +7,16 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 )
 
 type StructOfConfig struct {
-	PORT           string
-	RootDir        string
-	LogLevel       log.Level
-	Console        string // sh or cmd
-	UserConfigPath string
+	PORT                   string
+	RootDir                string
+	LogLevel               log.Level
+	Console                string // sh or cmd
+	UserConfigPath         string
+	WebsocketWriteInterval time.Duration
 }
 
 var Config *StructOfConfig
@@ -35,9 +37,10 @@ func InitConfigs(rootDir string, envFilename string) error {
 	}
 
 	Config.RootDir = rootDir
-	Config.UserConfigPath = filepath.Join(Config.RootDir, "data/user-config.json")
+	Config.UserConfigPath = filepath.Join(Config.RootDir, "data/commands-config.json")
 	Config.PORT = os.Getenv("PORT")
 	Config.LogLevel = log.Level(map[string]int{"trace": 0, "debug": 1, "info": 2, "warn": 3, "error": 4, "fatal": 5, "panic": 6}[os.Getenv("LogLevel")])
+	Config.WebsocketWriteInterval = time.Millisecond * 50
 	log.SetLevel(Config.LogLevel)
 
 	Config.Console = DetectDefaultConsole()

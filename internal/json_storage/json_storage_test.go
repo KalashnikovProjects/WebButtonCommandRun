@@ -12,11 +12,12 @@ import (
 )
 
 type structTestCreateUserConfigIfInvalid struct {
-	name          string
-	fileCreated   bool
-	fileContent   string
-	err           error
-	resultContent entities.UserConfig
+	name              string
+	fileCreated       bool
+	fileContent       string
+	randomCommandName bool
+	err               error
+	resultContent     entities.UserConfig
 }
 
 func TestCreateUserConfigIfInvalid(t *testing.T) {
@@ -54,10 +55,11 @@ func TestCreateUserConfigIfInvalid(t *testing.T) {
 			resultContent: defaultResultContent,
 		},
 		{
-			name:        "Partial file with redundant fields",
-			fileCreated: true,
-			fileContent: `{"fake-field": 123, "commands":[{"command": "example command", "fake-field-2": "fake"}]}`,
-			err:         nil,
+			name:              "Partial file with redundant fields",
+			fileCreated:       true,
+			fileContent:       `{"fake-field": 123, "commands":[{"command": "example command", "fake-field-2": "fake"}]}`,
+			randomCommandName: true,
+			err:               nil,
 			resultContent: entities.UserConfig{
 				UsingConsole: currentConsole,
 				Commands: []entities.Command{
@@ -137,7 +139,10 @@ func TestCreateUserConfigIfInvalid(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Cant unmarshal result: %v", err)
 			}
-			if !reflect.DeepEqual(jsonData, testCase.resultContent) || !reflect.DeepEqual(jsonData, UserConfig) {
+			if testCase.randomCommandName {
+				testCase.resultContent.Commands[0].Name = UserConfig.Commands[0].Name
+			}
+			if !reflect.DeepEqual(jsonData, testCase.resultContent) || !reflect.DeepEqual(jsonData, *UserConfig) {
 				t.Fatalf("Wrong answer. Expected: %v, got: %v", testCase.resultContent, jsonData)
 			}
 		})
@@ -152,14 +157,14 @@ func TestAppendCommand(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		initialConfig  entities.UserConfig
+		initialConfig  *entities.UserConfig
 		commandToAdd   entities.Command
 		expectedConfig entities.UserConfig
 		expectError    bool
 	}{
 		{
 			name: "Add command to empty config",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
@@ -180,7 +185,7 @@ func TestAppendCommand(t *testing.T) {
 		},
 		{
 			name: "Add command to existing config",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{
@@ -217,11 +222,13 @@ func TestAppendCommand(t *testing.T) {
 				t.Fatalf("Cant create temp file: %v", err)
 			}
 			defer func(name string) {
-				err := os.Remove(name)
+				err := tmpFile.Close()
 				if err != nil {
-					if err != nil {
-						t.Errorf("Cant delete temp file: %v", err)
-					}
+					t.Errorf("Cant close temp file: %v", err)
+				}
+				err = os.Remove(name)
+				if err != nil {
+					t.Errorf("Cant delete temp file: %v", err)
 				}
 			}(tmpFile.Name())
 
@@ -242,7 +249,7 @@ func TestAppendCommand(t *testing.T) {
 			}
 
 			if !tc.expectError {
-				if !reflect.DeepEqual(UserConfig, tc.expectedConfig) {
+				if !reflect.DeepEqual(*UserConfig, tc.expectedConfig) {
 					t.Fatalf("Expected config: %v, got: %v", tc.expectedConfig, UserConfig)
 				}
 			}
@@ -258,14 +265,14 @@ func TestDeleteCommand(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		initialConfig  entities.UserConfig
+		initialConfig  *entities.UserConfig
 		deleteId       uint
 		expectedConfig entities.UserConfig
 		expectError    bool
 	}{
 		{
 			name: "Delete first command",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -285,7 +292,7 @@ func TestDeleteCommand(t *testing.T) {
 		},
 		{
 			name: "Delete middle command",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -305,7 +312,7 @@ func TestDeleteCommand(t *testing.T) {
 		},
 		{
 			name: "Delete last command",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -323,7 +330,7 @@ func TestDeleteCommand(t *testing.T) {
 		},
 		{
 			name: "Empty list",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
@@ -343,7 +350,11 @@ func TestDeleteCommand(t *testing.T) {
 				t.Fatalf("Cant create temp file: %v", err)
 			}
 			defer func(name string) {
-				err := os.Remove(name)
+				err := tmpFile.Close()
+				if err != nil {
+					t.Errorf("Cant close temp file: %v", err)
+				}
+				err = os.Remove(name)
 				if err != nil {
 					t.Errorf("Cant delete temp file: %v", err)
 				}
@@ -366,7 +377,7 @@ func TestDeleteCommand(t *testing.T) {
 			}
 
 			if !tc.expectError {
-				if !reflect.DeepEqual(UserConfig, tc.expectedConfig) {
+				if !reflect.DeepEqual(*UserConfig, tc.expectedConfig) {
 					t.Fatalf("Expected config: %v, got: %v", tc.expectedConfig, UserConfig)
 				}
 			}
@@ -382,12 +393,12 @@ func TestGetCommandsList(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		initialConfig  entities.UserConfig
+		initialConfig  *entities.UserConfig
 		expectedResult []entities.Command
 	}{
 		{
 			name: "Get empty list",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
@@ -395,7 +406,7 @@ func TestGetCommandsList(t *testing.T) {
 		},
 		{
 			name: "Get commands list",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -416,7 +427,11 @@ func TestGetCommandsList(t *testing.T) {
 				t.Fatalf("Cant create temp file: %v", err)
 			}
 			defer func(name string) {
-				err := os.Remove(name)
+				err := tmpFile.Close()
+				if err != nil {
+					t.Errorf("Cant close temp file: %v", err)
+				}
+				err = os.Remove(name)
 				if err != nil {
 					t.Errorf("Cant delete temp file: %v", err)
 				}
@@ -447,14 +462,14 @@ func TestGetCommand(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		initialConfig  entities.UserConfig
+		initialConfig  *entities.UserConfig
 		commandId      uint
 		expectedResult entities.Command
 		expectError    bool
 	}{
 		{
 			name: "Get first command",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -467,7 +482,7 @@ func TestGetCommand(t *testing.T) {
 		},
 		{
 			name: "Get second command",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -480,7 +495,7 @@ func TestGetCommand(t *testing.T) {
 		},
 		{
 			name: "Get command out of range",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -493,7 +508,7 @@ func TestGetCommand(t *testing.T) {
 		},
 		{
 			name: "Get command from empty list",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
@@ -510,7 +525,11 @@ func TestGetCommand(t *testing.T) {
 				t.Fatalf("Cant create temp file: %v", err)
 			}
 			defer func(name string) {
-				err := os.Remove(name)
+				err := tmpFile.Close()
+				if err != nil {
+					t.Errorf("Cant close temp file: %v", err)
+				}
+				err = os.Remove(name)
 				if err != nil {
 					t.Errorf("Cant delete temp file: %v", err)
 				}
@@ -547,15 +566,15 @@ func TestUpdateCommand(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		initialConfig  entities.UserConfig
+		initialConfig  *entities.UserConfig
 		commandId      uint
 		newCommand     entities.Command
-		expectedConfig entities.UserConfig
+		expectedConfig *entities.UserConfig
 		expectError    bool
 	}{
 		{
 			name: "Update first command",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -564,7 +583,7 @@ func TestUpdateCommand(t *testing.T) {
 			},
 			commandId:  0,
 			newCommand: entities.Command{Name: "Updated First", Command: "echo updated"},
-			expectedConfig: entities.UserConfig{
+			expectedConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "Updated First", Command: "echo updated"},
@@ -575,7 +594,7 @@ func TestUpdateCommand(t *testing.T) {
 		},
 		{
 			name: "Update second command",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -584,7 +603,7 @@ func TestUpdateCommand(t *testing.T) {
 			},
 			commandId:  1,
 			newCommand: entities.Command{Name: "Updated Second", Command: "echo updated second"},
-			expectedConfig: entities.UserConfig{
+			expectedConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -595,7 +614,7 @@ func TestUpdateCommand(t *testing.T) {
 		},
 		{
 			name: "Update command out of range",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -604,7 +623,7 @@ func TestUpdateCommand(t *testing.T) {
 			},
 			commandId:  3,
 			newCommand: entities.Command{Name: "Updated Second", Command: "echo updated second"},
-			expectedConfig: entities.UserConfig{
+			expectedConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -615,13 +634,13 @@ func TestUpdateCommand(t *testing.T) {
 		},
 		{
 			name: "Update command in empty list",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
 			commandId:  0,
 			newCommand: entities.Command{Name: "New", Command: "echo new"},
-			expectedConfig: entities.UserConfig{
+			expectedConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
@@ -636,7 +655,11 @@ func TestUpdateCommand(t *testing.T) {
 				t.Fatalf("Cant create temp file: %v", err)
 			}
 			defer func(name string) {
-				err := os.Remove(name)
+				err := tmpFile.Close()
+				if err != nil {
+					t.Errorf("Cant close temp file: %v", err)
+				}
+				err = os.Remove(name)
 				if err != nil {
 					t.Errorf("Cant delete temp file: %v", err)
 				}
@@ -675,30 +698,30 @@ func TestGetUserConfig(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		initialConfig  entities.UserConfig
-		expectedResult entities.UserConfig
+		initialConfig  *entities.UserConfig
+		expectedResult *entities.UserConfig
 	}{
 		{
 			name: "Get empty config",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
-			expectedResult: entities.UserConfig{
+			expectedResult: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
 		},
 		{
 			name: "Get config with commands",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
 					{Name: "Second", Command: "echo second"},
 				},
 			},
-			expectedResult: entities.UserConfig{
+			expectedResult: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "First", Command: "echo first"},
@@ -715,7 +738,11 @@ func TestGetUserConfig(t *testing.T) {
 				t.Fatalf("Cant create temp file: %v", err)
 			}
 			defer func(name string) {
-				err := os.Remove(name)
+				err := tmpFile.Close()
+				if err != nil {
+					t.Errorf("Cant close temp file: %v", err)
+				}
+				err = os.Remove(name)
 				if err != nil {
 					t.Errorf("Cant delete temp file: %v", err)
 				}
@@ -731,7 +758,7 @@ func TestGetUserConfig(t *testing.T) {
 
 			result := GetUserConfig()
 
-			if !reflect.DeepEqual(result, tc.expectedResult) {
+			if !reflect.DeepEqual(result, *tc.expectedResult) {
 				t.Fatalf("Expected config: %v, got: %v", tc.expectedResult, result)
 			}
 		})
@@ -746,14 +773,14 @@ func TestUpdateUserConfig(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		initialConfig  entities.UserConfig
+		initialConfig  *entities.UserConfig
 		newConfig      entities.UserConfig
-		expectedConfig entities.UserConfig
+		expectedConfig *entities.UserConfig
 		expectError    bool
 	}{
 		{
 			name: "Update entire config",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "old",
 				Commands: []entities.Command{
 					{Name: "Old", Command: "echo old"},
@@ -766,7 +793,7 @@ func TestUpdateUserConfig(t *testing.T) {
 					{Name: "New2", Command: "echo new2"},
 				},
 			},
-			expectedConfig: entities.UserConfig{
+			expectedConfig: &entities.UserConfig{
 				UsingConsole: "new",
 				Commands: []entities.Command{
 					{Name: "New1", Command: "echo new1"},
@@ -777,7 +804,7 @@ func TestUpdateUserConfig(t *testing.T) {
 		},
 		{
 			name: "Update to empty config",
-			initialConfig: entities.UserConfig{
+			initialConfig: &entities.UserConfig{
 				UsingConsole: "old",
 				Commands: []entities.Command{
 					{Name: "Old", Command: "echo old"},
@@ -787,7 +814,7 @@ func TestUpdateUserConfig(t *testing.T) {
 				UsingConsole: "new",
 				Commands:     []entities.Command{},
 			},
-			expectedConfig: entities.UserConfig{
+			expectedConfig: &entities.UserConfig{
 				UsingConsole: "new",
 				Commands:     []entities.Command{},
 			},
@@ -802,7 +829,11 @@ func TestUpdateUserConfig(t *testing.T) {
 				t.Fatalf("Cant create temp file: %v", err)
 			}
 			defer func(name string) {
-				err := os.Remove(name)
+				err := tmpFile.Close()
+				if err != nil {
+					t.Errorf("Cant close temp file: %v", err)
+				}
+				err = os.Remove(name)
 				if err != nil {
 					t.Errorf("Cant delete temp file: %v", err)
 				}
@@ -841,17 +872,17 @@ func TestUpdateFile(t *testing.T) {
 
 	testCases := []struct {
 		name           string
-		configToWrite  entities.UserConfig
-		expectedResult entities.UserConfig
+		configToWrite  *entities.UserConfig
+		expectedResult *entities.UserConfig
 		expectError    bool
 	}{
 		{
 			name: "Write empty config",
-			configToWrite: entities.UserConfig{
+			configToWrite: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
-			expectedResult: entities.UserConfig{
+			expectedResult: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
@@ -859,14 +890,14 @@ func TestUpdateFile(t *testing.T) {
 		},
 		{
 			name: "Write config with commands",
-			configToWrite: entities.UserConfig{
+			configToWrite: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "Test1", Command: "echo test1"},
 					{Name: "Test2", Command: "echo test2"},
 				},
 			},
-			expectedResult: entities.UserConfig{
+			expectedResult: &entities.UserConfig{
 				UsingConsole: "test",
 				Commands: []entities.Command{
 					{Name: "Test1", Command: "echo test1"},
@@ -884,7 +915,11 @@ func TestUpdateFile(t *testing.T) {
 				t.Fatalf("Cant create temp file: %v", err)
 			}
 			defer func(name string) {
-				err := os.Remove(name)
+				err := tmpFile.Close()
+				if err != nil {
+					t.Errorf("Cant close temp file: %v", err)
+				}
+				err = os.Remove(name)
 				if err != nil {
 					t.Errorf("Cant delete temp file: %v", err)
 				}
@@ -908,7 +943,7 @@ func TestUpdateFile(t *testing.T) {
 					t.Fatalf("Cant read file after updateFile: %v", err)
 				}
 
-				var result entities.UserConfig
+				var result *entities.UserConfig
 				err = json.Unmarshal(content, &result)
 				if err != nil {
 					t.Fatalf("Cant unmarshal result: %v", err)

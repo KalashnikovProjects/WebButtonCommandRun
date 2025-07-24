@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/usecases"
 	"github.com/gofiber/fiber/v2"
@@ -101,7 +102,11 @@ func GetJsonConfig(c *fiber.Ctx) error {
 }
 
 func EditJsonConfig(c *fiber.Ctx) error {
-	var conf entities.UserConfig
+	conf := entities.UserConfig{
+		UsingConsole: config.Config.Console,
+		Commands:     []entities.Command{},
+	}
+
 	err := c.BodyParser(&conf)
 	if err != nil {
 		return fiber.ErrBadRequest
@@ -110,4 +115,8 @@ func EditJsonConfig(c *fiber.Ctx) error {
 		return fiber.ErrInternalServerError
 	}
 	return nil
+}
+
+func ConsoleUsing(c *fiber.Ctx) error {
+	return c.Send([]byte(config.Config.Console))
 }

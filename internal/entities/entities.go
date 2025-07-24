@@ -2,6 +2,12 @@ package entities
 
 // TODO: server mode с паролями и заморозкой конфигов
 
+type CommandOptions struct {
+	Cols uint16   `json:"cols"`
+	Rows uint16   `json:"rows"`
+	Env  []string `json:"-"`
+}
+
 type UserConfig struct {
 	UsingConsole string    `json:"using-console"`
 	Commands     []Command `json:"commands"`
