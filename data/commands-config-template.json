@@ -7,8 +7,8 @@
       "command": "docker compose up"
     },
     {
-      "name": "Restart docker",
-      "command": "docker compose restart"
+      "name": "Run python",
+      "command": "python"
     }
   ]
 }

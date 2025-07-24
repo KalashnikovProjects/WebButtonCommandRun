@@ -19,7 +19,7 @@ func RunApp() error {
 	//		Next: func(c *fiber.Ctx) bool {
 	//			return c.Query("noCache") == "true" || strings.HasPrefix(c.OriginalURL(), "/api")
 	//		},
-	//		Expiration:   0 * time.Hour, // TODO replace 0 with 3 Hours after dev
+	//		Expiration:   3 * time.Hour,
 	//		CacheControl: true,
 	//	}))
 	web := app.Group("/")
