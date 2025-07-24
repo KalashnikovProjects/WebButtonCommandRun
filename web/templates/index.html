@@ -3,9 +3,10 @@
 <head>
     <link href="../static/css/base.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"/>
-    <script async src="../static/js/base.js" crossorigin="anonymous"></script>
+    <script src="../static/js/base.js" crossorigin="anonymous" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit/lib/xterm-addon-fit.min.js" defer></script>
+
     <script src="../static/js/terminal.js" defer></script>
 
     <title>Command Run</title>
@@ -25,33 +26,17 @@
                 <button id="close-button" class="normal-button red-button">Close</button>
                 <button id="restart-button" class="normal-button">Restart</button>
 
-                <p class="command-text" onWheel="smoothHorizontalScroll(event)">
-                    run vscode.exe
+                <p id="command-up-terminal" class="command-text command-name" onWheel="smoothHorizontalScroll(event)">
+                    command name here
                 </p>
             </div>
             <div id="terminal"></div>
         </div>
     </div>
     <div class="command-list-container">
-        <ul class="command-list">
+        <ul id="command-list" class="command-list">
             <li>
-                <button class="round-button">
-                    <img width="80%" src="../static/vectors/arrow.svg" alt="Select command"/>
-                </button>
-                <p class="command-text command-name" onWheel="smoothHorizontalScroll(event)">
-                    Super nice command
-                </p>
-            </li>
-            <li>
-                <button class="round-button selected">
-                    <img width="80%" src="../static/vectors/selected.svg" alt="Select command"/>
-                </button>
-                <p class="command-text command-name" onWheel="smoothHorizontalScroll(event)">
-                    VSCode
-                </p>
-            </li>
-            <li>
-                <button class="round-button">
+                <button class="round-button" style="width: 50%">
                     <img width="100%" src="../static/vectors/plus.svg" alt="Add new command"/>
                 </button>
                 <p class="command-text command-name" onWheel="smoothHorizontalScroll(event)">
@@ -66,26 +51,25 @@
         <img src="../static/vectors/arrow.svg" alt="Run command"/>
     </button>
     <div class="command-info">
-        <label for="main-command-input">Command</label>
-        <input id="main-command-input" type="text" class="command-text" value="run vscode.exe" spellcheck="false" oninput="this.size = this.value.length" \>
-        <br>
-        <label for="main-name-input">Name</label>
-        <input id="main-name-input" type="text" class="command-text command-name" value="VSCode" spellcheck="false" oninput="this.size = this.value.length" \>
+        <input id="main-name-input" type="text" class="command-text command-name" placeholder="Command Name" spellcheck="false">
+        <button id="edit-button" class="normal-button small-button">Edit</button>
+        <br/>
+        <textarea id="main-command-input" class="command-text main-command-text" placeholder="command" spellcheck="false" onWheel="smoothHorizontalScroll(event)"></textarea>
     </div>
 </div>
 <div id="using-console-indicator" class="using-console-indicator">
     using sh <img src="../static/vectors/console-bash.svg" alt=""/>
 </div>
 <div id="right-menu" class="right-menu hidden">
-    <button id="import-config-button" class="normal-button">
-        Import config
-    </button>
     <button id="save-config-button" class="normal-button">
         Save config to json
     </button>
-    <button id="save-settings-button" class="normal-button">
-        Save settings
+    <button id="import-config-button" class="normal-button">
+        Import config
     </button>
+<!--    <button id="save-settings-button" class="normal-button">-->
+<!--        Save settings-->
+<!--    </button>-->
 </div>
 </body>
 </html>

@@ -1,7 +1,10 @@
-let command = '';
+let termInputedText = [];
 let term;
+let commandRunning = false
+const fitAddon = new FitAddon.FitAddon();
 
 function initTerminal() {
+    let termElem = document.getElementById('terminal')
     term = new Terminal({
         theme: {
             background: '#1e1e1e',
@@ -9,42 +12,53 @@ function initTerminal() {
             cursor: 'white',
         },
         fontFamily: 'Fira Code, monospace',
-        fontSize: 14,
+        fontSize: 18,
+        cursorBlink: true,
+        cursorStyle: 'block',
+        allowTransparency: true,
+        cols: 80,
+        rows: 24,
+        convertEol: true,
+        disableStdin: true, // Initially disabled until command starts
     });
-    const fitAddon = new FitAddon.FitAddon();
     term.loadAddon(fitAddon);
-    term.open(document.getElementById('terminal'));
-    fitAddon.fit();
+    term.open(termElem);
+    fitAddon.fit()
+    term.resize(term.cols - 2, term.rows)
 
-    term.writeln('Text will be here soon');
-    term.write('$ ');
-    term.onKey(onTermKey)
+    term.onData(onTermData)
+    // term.onKey(onKey)
 }
 
-
-function onTermKey(e){
-    const char = e.key;
-
-    if (e.domEvent.key === 'Enter') {
-        term.writeln('');
-        handleCommand(command);
-        command = '';
-        term.write('$ ');
-
-    } else if (e.domEvent.key === 'Backspace') {
-        if (command.length > 0) {
-            command = command.slice(0, -1);
-            term.write('\b \b');
+function onTermData(data){
+    // if (data === "\x03") {
+    //     // CTRL + C
+    //     console.log(term.getSelection())
+    //     // Why term.getSelection() always return empty sting? Dont work
+    //     navigator.clipboard.writeText(term.getSelection())
+    // }
+    if (commandRunning) {
+        if (data === "\x16") {
+            // CTRL + V
+            navigator.clipboard.readText().then(clipText => {termInputedText.push(clipText)})
         }
-
-    } else if (e.domEvent.key.length === 1) {
-        command += char;
-        term.write(char);
+        termInputedText.push(data);
     }
 }
 
-function handleCommand(cmd) {
-}
 
+// function onKey(e){
+//     let char = e.key
+//     if (!commandRunning) {
+//         return
+//     }
+//     if (e.domEvent.key === 'Enter') {
+//         term.writeln("");
+//     } else if (e.domEvent.key === 'Backspace') {
+//         term.write('\b \b');
+//     } else {
+//         term.write(char);
+//     }
+// }
 
 initTerminal()

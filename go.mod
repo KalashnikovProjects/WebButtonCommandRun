@@ -4,7 +4,6 @@ go 1.24.4
 
 require (
 	github.com/aglyzov/go-patch v0.0.0-20181012082005-108ca2ba9cdf
-	github.com/containerd/console v1.0.5
 	github.com/creack/pty v1.1.24
 	github.com/gofiber/contrib/websocket v1.3.4
 	github.com/gofiber/fiber/v2 v2.52.8
