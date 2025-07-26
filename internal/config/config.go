@@ -28,9 +28,10 @@ func DetectDefaultConsole() string {
 	return "sh"
 }
 
-func InitConfigs(rootDir string, envFilename string) error {
+func InitConfigs(rootDir string) error {
 	Config = &StructOfConfig{}
-	if envFilename != "" {
+	envFilename, ok := os.LookupEnv("ENV_FILE")
+	if ok {
 		if err := godotenv.Load(filepath.Join(rootDir, envFilename)); err != nil {
 			return fmt.Errorf("error while loading .env file: %w", err)
 		}
@@ -38,12 +39,21 @@ func InitConfigs(rootDir string, envFilename string) error {
 
 	Config.RootDir = rootDir
 	Config.UserConfigPath = filepath.Join(Config.RootDir, "data/commands-config.json")
-	Config.PORT = os.Getenv("PORT")
+	port, ok := os.LookupEnv("PORT")
+	if ok {
+		Config.PORT = port
+	} else {
+		Config.PORT = "80"
+	}
 	Config.LogLevel = log.Level(map[string]int{"trace": 0, "debug": 1, "info": 2, "warn": 3, "error": 4, "fatal": 5, "panic": 6}[os.Getenv("LogLevel")])
 	Config.WebsocketWriteInterval = time.Millisecond * 50
 	log.SetLevel(Config.LogLevel)
-
-	Config.Console = DetectDefaultConsole()
+	console, ok := os.LookupEnv("CONSOLE")
+	if ok {
+		Config.Console = console
+	} else {
+		Config.Console = DetectDefaultConsole()
+	}
 
 	return nil
 }

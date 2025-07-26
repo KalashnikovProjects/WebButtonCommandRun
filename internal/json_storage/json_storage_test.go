@@ -21,7 +21,7 @@ type structTestCreateUserConfigIfInvalid struct {
 }
 
 func TestCreateUserConfigIfInvalid(t *testing.T) {
-	err := config.InitConfigs("../..", "testing.env")
+	err := config.InitConfigs("../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -150,7 +150,7 @@ func TestCreateUserConfigIfInvalid(t *testing.T) {
 }
 
 func TestAppendCommand(t *testing.T) {
-	err := config.InitConfigs("../..", "testing.env")
+	err := config.InitConfigs("../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -258,7 +258,7 @@ func TestAppendCommand(t *testing.T) {
 }
 
 func TestDeleteCommand(t *testing.T) {
-	err := config.InitConfigs("../..", "testing.env")
+	err := config.InitConfigs("../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -386,7 +386,7 @@ func TestDeleteCommand(t *testing.T) {
 }
 
 func TestGetCommandsList(t *testing.T) {
-	err := config.InitConfigs("../..", "testing.env")
+	err := config.InitConfigs("../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -455,7 +455,7 @@ func TestGetCommandsList(t *testing.T) {
 }
 
 func TestGetCommand(t *testing.T) {
-	err := config.InitConfigs("../..", "testing.env")
+	err := config.InitConfigs("../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -559,7 +559,7 @@ func TestGetCommand(t *testing.T) {
 }
 
 func TestUpdateCommand(t *testing.T) {
-	err := config.InitConfigs("../..", "testing.env")
+	err := config.InitConfigs("../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -691,7 +691,7 @@ func TestUpdateCommand(t *testing.T) {
 }
 
 func TestGetUserConfig(t *testing.T) {
-	err := config.InitConfigs("../..", "testing.env")
+	err := config.InitConfigs("../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -766,7 +766,7 @@ func TestGetUserConfig(t *testing.T) {
 }
 
 func TestUpdateUserConfig(t *testing.T) {
-	err := config.InitConfigs("../..", "testing.env")
+	err := config.InitConfigs("../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -865,7 +865,7 @@ func TestUpdateUserConfig(t *testing.T) {
 }
 
 func TestUpdateFile(t *testing.T) {
-	err := config.InitConfigs("../..", "testing.env")
+	err := config.InitConfigs("../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}

@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	err := config.InitConfigs("./", ".env")
+	err := config.InitConfigs("./")
 	if err != nil {
 		log.Fatalw("Error while init configs", err)
 	}

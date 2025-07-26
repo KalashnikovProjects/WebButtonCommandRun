@@ -26,10 +26,13 @@ func setDefaultNames() {
 
 func updateFile() error {
 	file, err := os.OpenFile(config.Config.UserConfigPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return fmt.Errorf("error while opening user-config file: %w", err)
+	}
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-			log.Warn("Error opening user-config file for updating", err)
+			log.Warn("Error closing user-config file: ", err)
 		}
 	}(file)
 	encoder := json.NewEncoder(file)

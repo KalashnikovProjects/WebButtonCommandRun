@@ -18,7 +18,7 @@ func normalizeOutput(out string) string {
 }
 
 func TestRunCommand_Success(t *testing.T) {
-	_ = config.InitConfigs("../..", "testing.env")
+	_ = config.InitConfigs("../..")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
@@ -51,7 +51,7 @@ func TestRunCommand_Success(t *testing.T) {
 }
 
 func TestRunCommand_InvalidCommand(t *testing.T) {
-	_ = config.InitConfigs("../..", "testing.env")
+	_ = config.InitConfigs("../..")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
@@ -81,7 +81,7 @@ func TestRunCommand_InvalidCommand(t *testing.T) {
 }
 
 func TestRunCommand_ContextCancel(t *testing.T) {
-	_ = config.InitConfigs("../..", "testing.env")
+	_ = config.InitConfigs("../..")
 	ctx, cancel := context.WithCancel(context.Background())
 	command, err := RunCommand(ctx, "ping 127.0.0.1", entities.CommandOptions{})
 	if err != nil {
@@ -103,7 +103,7 @@ func TestRunCommand_ContextCancel(t *testing.T) {
 }
 
 func TestRunCommand_PythonInteractive(t *testing.T) {
-	_ = config.InitConfigs("../..", "testing.env")
+	_ = config.InitConfigs("../..")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -141,7 +141,7 @@ func TestRunCommand_PythonInteractive(t *testing.T) {
 }
 
 func TestRunCommand_CopyCon(t *testing.T) {
-	_ = config.InitConfigs("../..", "testing.env")
+	_ = config.InitConfigs("../..")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	tmpFile, err := os.CreateTemp("", "testfile_*.txt")

@@ -1,7 +1,10 @@
+//go:build !windows
+
 package command_runner
 
 import (
 	"fmt"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/creack/pty"
 	"github.com/gofiber/fiber/v2/log"
@@ -15,8 +18,8 @@ type unixCommand struct {
 	pty *os.File
 }
 
-func RunCommandUnix(command string, options entities.CommandOptions) (Command, error) {
-	cmd := exec.Command("/bin/sh", "-c", command)
+func RunCommand(command string, options entities.CommandOptions) (Command, error) {
+	cmd := exec.Command(config.Config.Console, "-c", command)
 	cmd.Env = options.Env
 	commandPty, err := pty.Start(cmd)
 	if err != nil {
