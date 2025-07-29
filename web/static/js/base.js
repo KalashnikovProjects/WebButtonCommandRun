@@ -50,7 +50,13 @@ function toggleMenu(event) {
 function runCommand(event) {
     fitAddon.fit()
     term.resize(term.cols - 2, term.rows)
-    terminalWebsocket = new WebSocket(`${apiBase}ws/commands/${commandId}`)
+    let protocol
+    if (location.protocol === "https") {
+        protocol = "wss"
+    } else {
+        protocol = "ws"
+    }
+    terminalWebsocket = new WebSocket(`${protocol}://${location.host}${apiBase}ws/commands/${commandId}`)
     document.getElementById("command-up-terminal").innerText = currentCommand.name
     let interval
     terminalWebsocket.onopen = (event) => {
@@ -289,7 +295,7 @@ function initPage() {
                 document.getElementById("using-console-indicator").innerHTML = "using cmd <img src=\"../static/vectors/console-cmd.svg\" alt=\"\"/>"
                 break
             case "sh":
-                document.getElementById("using-console-indicator").innerHTML = "using cmd <img src=\"../static/vectors/console-bash.svg\" alt=\"\"/>"
+                document.getElementById("using-console-indicator").innerHTML = "using sh <img src=\"../static/vectors/console-bash.svg\" alt=\"\"/>"
                 break
             default:
                 document.getElementById("using-console-indicator").innerHTML = "unknown console"

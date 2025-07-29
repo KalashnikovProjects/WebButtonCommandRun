@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2"
@@ -49,5 +50,5 @@ func RunApp() error {
 		return c.Next()
 	})
 	websockets.Get("/commands/:id<min(0)>", websocket.New(RunCommandWebsocket))
-	return app.Listen(":80")
+	return app.Listen(fmt.Sprintf(":%s", config.Config.PORT))
 }
