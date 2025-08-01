@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 )
 
-func RunApp() error {
+func CreateApp() *fiber.App {
 	app := fiber.New()
 	app.Use(recover.New())
 	app.Use(logger.New())
@@ -50,5 +50,9 @@ func RunApp() error {
 		return c.Next()
 	})
 	websockets.Get("/commands/:id<min(0)>", websocket.New(RunCommandWebsocket))
+	return app
+}
+
+func RunApp(app *fiber.App) error {
 	return app.Listen(fmt.Sprintf(":%s", config.Config.PORT))
 }

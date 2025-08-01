@@ -16,7 +16,8 @@ func main() {
 	if err != nil {
 		log.Fatalw("Error while initialising user config", err)
 	}
-	err = server.RunApp()
+	app := server.CreateApp()
+	err = server.RunApp(app)
 	if err != nil {
 		log.Fatalw("Error while running server", err)
 	}
