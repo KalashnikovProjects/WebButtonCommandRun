@@ -1,0 +1,212 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [published]
+
+env:
+  GO_VERSION: '1.24'
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go $${{ env.GO_VERSION }}
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-$${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-$${{ env.GO_VERSION }}
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Run tests
+      run: make test-race test-coverage
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.out
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Gosec Security Scanner
+      uses: securego/gosec@master
+      with:
+          args: '-no-fail -fmt sarif -out gosec.sarif ./...'
+
+    - name: Upload gosec results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'gosec.sarif'
+
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    needs: [test, security]
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            make_target: build-linux
+            binary_name: wbcm-linux
+            archive_name: wbcm-linux.tar.gz
+          - os: windows-latest
+            make_target: build-windows
+            binary_name: wbcm.exe
+            archive_name: wbcm-windows.zip
+          - os: macos-latest
+            make_target: build-macos
+            binary_name: wbcm-macos
+            archive_name: wbcm-macos.tar.gz
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Build using Makefile
+      run: make BINARIES_PATH=. ${{ matrix.make_target }}
+
+    - name: Create release package
+      run: |
+        mkdir -p release-package
+        
+        cp binaries/${{ matrix.binary_name }} release-package/
+        
+        cp -r data release-package/
+        cp -r web release-package/
+        
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          cp -r pty release-package/
+        fi
+        
+        if [ "${{ matrix.os }}" = "windows-latest" ]; then
+          powershell -Command "Compress-Archive -Path release-package/* -DestinationPath ${{ matrix.archive_name }}"
+        else
+          tar -czf ${{ matrix.archive_name }} -C release-package .
+        fi
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.make_target }}
+        path: ${{ matrix.archive_name }}
+
+  build-multiarch:
+    name: Build Multi-Architecture
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+
+    - name: Download dependencies
+      run: go mod download
+
+    - name: Build all architectures using Makefile
+      run: make build-all
+
+    - name: Create multi-arch packages
+      run: |
+        # Создаем архивы для каждой архитектуры
+        for binary in wbcm32.exe wbcm-linux-arm wbcm-linux32 wbcm-macos-arm; do
+          mkdir -p release-package-$binary
+          
+          # Копируем бинарник
+          cp binaries/$binary release-package-$binary/
+          
+          # Копируем data и web директории
+          cp -r data release-package-$binary/
+          cp -r web release-package-$binary/
+          
+          # Для Windows добавляем pty директорию
+          if [[ $binary == *.exe ]]; then
+            cp -r pty release-package-$binary/
+            # Создаем ZIP для Windows
+            powershell -Command "Compress-Archive -Path release-package-$binary/* -DestinationPath $binary.zip"
+          else
+            # Создаем TAR.GZ для Linux/macOS
+            tar -czf $binary.tar.gz -C release-package-$binary .
+          fi
+        done
+
+    - name: Upload multi-arch artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: multi-arch-binaries
+        path: |
+          wbcm32.exe.zip
+          wbcm-linux-arm.tar.gz
+          wbcm-linux32.tar.gz
+          wbcm-macos-arm.tar.gz
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [build, build-multiarch]
+    if: github.event_name == 'release' && github.event.action == 'published'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          build-linux/wbcm-linux.tar.gz
+          build-windows/wbcm-windows.zip
+          build-macos/wbcm-macos.tar.gz
+          multi-arch-binaries/wbcm32.exe.zip
+          multi-arch-binaries/wbcm-linux-arm.tar.gz
+          multi-arch-binaries/wbcm-linux32.tar.gz
+          multi-arch-binaries/wbcm-macos-arm.tar.gz
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
