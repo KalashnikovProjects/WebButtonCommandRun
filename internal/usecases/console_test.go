@@ -8,6 +8,7 @@ import (
 	"github.com/acarl005/stripansi"
 	"github.com/gofiber/fiber/v2/log"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -114,9 +115,9 @@ func TestRunCommand_PythonInteractive(t *testing.T) {
 	if command.Input == nil || command.Output == nil {
 		t.Fatal("command.Input or output channel is nil")
 	}
-	command.Input <- "1+2\r"
+	command.Input <- "1+2\re"
+	command.Input <- "xit()\r"
 	<-time.After(1 * time.Second)
-	command.Input <- "exit()\r"
 	result := ""
 	ok := true
 	var dataOut string
@@ -134,13 +135,13 @@ func TestRunCommand_PythonInteractive(t *testing.T) {
 		}
 	}
 	out := normalizeOutput(result)
-	need := ">>> 1+2\r3\r>>>\r>>> exit()\r"
+	need := ">>> 1+2\r3\r>>> exit()\r"
 	if !strings.HasSuffix(out, need) {
 		t.Fatalf("unexpected output suffig: '%q', need '%q'", out, need)
 	}
 }
 
-func TestRunCommand_CopyCon(t *testing.T) {
+func TestRunCommand_EditFile(t *testing.T) {
 	_ = config.InitConfigs("../..")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -149,16 +150,28 @@ func TestRunCommand_CopyCon(t *testing.T) {
 	if err != nil {
 		t.Errorf("cant close tmpFile %v", err)
 	}
-	command, err := RunCommand(ctx, fmt.Sprintf("copy con %s", tmpFile.Name()), entities.CommandOptions{})
+
+	inputTestText := "Hello from copy 7\x08con!\r"
+	outputText := "Hello from copy con!\r"
+	var commandText string
+	var textSequence string
+	if runtime.GOOS == "windows" {
+		commandText = fmt.Sprintf("copy con %s", tmpFile.Name())
+		textSequence = "\x1A\r"
+	} else {
+		commandText = fmt.Sprintf("nano %s", tmpFile.Name())
+		textSequence = "\x18y\r"
+	}
+
+	command, err := RunCommand(ctx, commandText, entities.CommandOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if command.Input == nil || command.Output == nil {
 		t.Fatal("input or output channel is nil")
 	}
-	inputTestText := "Hello from copy con!\r"
 	command.Input <- inputTestText
-	command.Input <- "\x1A\r"
+	command.Input <- textSequence
 	ok := true
 	for ok {
 		select {
@@ -176,7 +189,7 @@ func TestRunCommand_CopyCon(t *testing.T) {
 		t.Fatalf("error while reading temp file with output: %v", err)
 	}
 	out := normalizeOutput(string(tmpFileContent))
-	if out != inputTestText {
-		t.Fatalf("file editing wrong answer. expected: %q, got %q", inputTestText, out)
+	if out != outputText {
+		t.Fatalf("file editing wrong answer. expected: %q, got %q", outputText, out)
 	}
 }

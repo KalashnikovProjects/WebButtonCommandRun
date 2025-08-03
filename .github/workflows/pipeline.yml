@@ -63,7 +63,7 @@ jobs:
           args: '-no-fail -fmt sarif -out gosec.sarif ./...'
 
     - name: Upload gosec results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       with:
         sarif_file: 'gosec.sarif'
 
@@ -150,24 +150,19 @@ jobs:
 
     - name: Create multi-arch packages
       run: |
-        # Создаем архивы для каждой архитектуры
         for binary in wbcm32.exe wbcm-linux-arm wbcm-linux32 wbcm-macos-arm; do
           mkdir -p release-package-$binary
           
-          # Копируем бинарник
           cp binaries/$binary release-package-$binary/
           
-          # Копируем data и web директории
           cp -r data release-package-$binary/
           cp -r web release-package-$binary/
           
-          # Для Windows добавляем pty директорию
+          # Create archive, add pty folder in windows
           if [[ $binary == *.exe ]]; then
             cp -r pty release-package-$binary/
-            # Создаем ZIP для Windows
             powershell -Command "Compress-Archive -Path release-package-$binary/* -DestinationPath $binary.zip"
           else
-            # Создаем TAR.GZ для Linux/macOS
             tar -czf $binary.tar.gz -C release-package-$binary .
           fi
         done
