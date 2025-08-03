@@ -8,6 +8,7 @@ import (
 	"github.com/acarl005/stripansi"
 	"github.com/gofiber/fiber/v2/log"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
@@ -107,8 +108,16 @@ func TestRunCommand_PythonInteractive(t *testing.T) {
 	_ = config.InitConfigs("../..")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
+	pythonCmd := "python3"
+	if _, err := exec.LookPath("python3"); err != nil {
+		if _, err := exec.LookPath("python"); err != nil {
+			t.Skip("Python not found (tried python3 and python)")
+		} else {
+			pythonCmd = "python"
+		}
+	}
 
-	command, err := RunCommand(ctx, "python", entities.CommandOptions{})
+	command, err := RunCommand(ctx, pythonCmd, entities.CommandOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -154,13 +163,10 @@ func TestRunCommand_EditFile(t *testing.T) {
 	inputTestText := "Hello from copy 7\x08con!\r"
 	outputText := "Hello from copy con!\r"
 	var commandText string
-	var textSequence string
 	if runtime.GOOS == "windows" {
 		commandText = fmt.Sprintf("copy con %s", tmpFile.Name())
-		textSequence = "\x1A\r"
 	} else {
 		commandText = fmt.Sprintf("nano %s", tmpFile.Name())
-		textSequence = "\x18y\r"
 	}
 
 	command, err := RunCommand(ctx, commandText, entities.CommandOptions{})
@@ -171,7 +177,15 @@ func TestRunCommand_EditFile(t *testing.T) {
 		t.Fatal("input or output channel is nil")
 	}
 	command.Input <- inputTestText
-	command.Input <- textSequence
+
+	if runtime.GOOS == "windows" {
+		command.Input <- "\x1A\r"
+	} else {
+		command.Input <- "\u0018"
+		<-time.After(1 * time.Second)
+		command.Input <- "Y\r"
+	}
+
 	ok := true
 	for ok {
 		select {
