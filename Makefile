@@ -1,6 +1,6 @@
 BINARIES_PATH ?= binaries
 
-.PHONY: all clean build-all build-current build-windows build-windows32 build-linux build-linux-arm build-linux32 build-macos build-macos-arm build-macos32
+.PHONY: all clean build-all
 
 all: build-all
 
@@ -11,7 +11,7 @@ else
 	mkdir -p ${BINARIES_PATH}
 endif
 
-build-all: binaries build-windows build-windows32 build-linux build-linux-arm build-linux32 build-macos build-macos-arm build-macos32
+build-all: binaries build-windows build-windows32 build-linux build-linux-arm build-linux32 build-macos build-macos-arm
 
 ifeq ($(OS),Windows_NT)
 build-current: binaries
@@ -65,8 +65,6 @@ build-macos: binaries
 build-macos-arm: binaries
 	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-macos-arm ./cmd
 
-build-macos32: binaries
-	GOOS=darwin GOARCH=386 CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-macos-32 ./cmd
 endif
 
 clean:
