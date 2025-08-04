@@ -129,8 +129,9 @@ jobs:
           
           # Create archive, add pty folder in windows
           if [[ $binary == *.exe ]]; then
-            cp -r pty release-package-$binary/
-            zip -r $name release-package-$name
+            cp -r pty release-package-name/
+            cd "release-package-$name" 
+            zip -r "../$name" .
           else
             tar -czf $name -C release-package-$name .
           fi
