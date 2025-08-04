@@ -85,68 +85,7 @@ jobs:
           path: gosec.sarif
           retention-days: 7
 
-  build:
-    name: Build
-    runs-on: ${{ matrix.os }}
-    needs: [test, security]
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        include:
-          - os: ubuntu-latest
-            make_target: build-linux
-            binary_name: wbcr-linux
-            archive_name: wbcr-linux.tar.gz
-          - os: windows-latest
-            make_target: build-windows
-            binary_name: wbcr.exe
-            archive_name: wbcr-windows.zip
-          - os: macos-latest
-            make_target: build-macos
-            binary_name: wbcr-macos
-            archive_name: wbcr-macos.tar.gz
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ env.GO_VERSION }}
-
-    - name: Download dependencies
-      run: go mod download
-
-    - name: Build using Makefile
-      run: make BINARIES_PATH=. ${{ matrix.make_target }}
-
-    - name: Create release package
-      run: |
-        mkdir -p release-package
-        
-        cp binaries/${{ matrix.binary_name }} release-package/
-        
-        cp -r data release-package/
-        cp -r web release-package/
-        
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          cp -r pty release-package/
-        fi
-        
-        if [ "${{ matrix.os }}" = "windows-latest" ]; then
-          powershell -Command "Compress-Archive -Path release-package/* -DestinationPath ${{ matrix.archive_name }}"
-        else
-          tar -czf ${{ matrix.archive_name }} -C release-package .
-        fi
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.make_target }}
-        path: ${{ matrix.archive_name }}
-
-  build-multiarch:
+  build-all:
     name: Build Multi-Architecture
     runs-on: ubuntu-latest
     needs: [test, security]
@@ -168,37 +107,52 @@ jobs:
 
     - name: Create multi-arch packages
       run: |
-        for binary in wbcr32.exe wbcr-linux-arm wbcr-linux32 wbcr-macos-arm; do
-          mkdir -p release-package-$binary
-          
-          cp binaries/$binary release-package-$binary/
-          
-          cp -r data release-package-$binary/
-          cp -r web release-package-$binary/
+        pairs=(
+          "wbcr.exe:wbcr-windows.zip"
+          "wbcr32.exe:wbcr-windows32.zip"
+          "wbcr-linux:wbcr-linux.tar.gz"
+          "wbcr-linux32:wbcr-linx32.tar.gz"
+          "wbcr-linux-arm:wbcr-linx-arm.tar.gz"
+          "wbcr-macos:wbcr-macos.tar.gz"
+          "wbcr-macos-arm:wbcr-macos-arm.tar.gz"
+        )
+        
+        for pair in "${pairs[@]}"; do
+          binary="${pair%%:*}"   # Часть до двоеточия
+          name="${pair#*:}"
+        
+          mkdir -p release-package-$name
+          cp binaries/$binary release-package-$name/
+        
+          cp -r data release-package-$name/
+          cp -r web release-package-$name/
           
           # Create archive, add pty folder in windows
           if [[ $binary == *.exe ]]; then
             cp -r pty release-package-$binary/
-            powershell -Command "Compress-Archive -Path release-package-$binary/* -DestinationPath $binary.zip"
+            zip -r $name release-package-$name
           else
-            tar -czf $binary.tar.gz -C release-package-$binary .
+            tar -czf $name -C release-package-$name .
           fi
         done
 
     - name: Upload multi-arch artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: multi-arch-binaries
+        name: binaries
         path: |
-          wbcr32.exe.zip
+          wbcr-windows.zip
+          wbcr-windows32.zip
+          wbcr-linux.tar.gz
           wbcr-linux-arm.tar.gz
           wbcr-linux32.tar.gz
+          wbcr-macos.tar.gz
           wbcr-macos-arm.tar.gz
 
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [build, build-multiarch]
+    needs: [build-all]
 
     steps:
     - name: Checkout code
@@ -211,13 +165,13 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          build-linux/wbcr-linux.tar.gz
-          build-windows/wbcr-windows.zip
-          build-macos/wbcr-macos.tar.gz
-          multi-arch-binaries/wbcr32.exe.zip
-          multi-arch-binaries/wbcr-linux-arm.tar.gz
-          multi-arch-binaries/wbcr-linux32.tar.gz
-          multi-arch-binaries/wbcr-macos-arm.tar.gz
+          builds/wbcr-windows.zip
+          builds/wbcr32-windows.zip
+          builds/wbcr-linux.tar.gz
+          builds/wbcr-linux-arm.tar.gz
+          builds/wbcr-linux32.tar.gz
+          builds/wbcr-macos.tar.gz
+          builds/wbcr-macos-arm.tar.gz
         draft: false
         prerelease: false
       env:
