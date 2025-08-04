@@ -1,10 +1,6 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
   release:
     types: [published]
 
@@ -58,18 +54,36 @@ jobs:
       contents: read
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Run Gosec Security Scanner
-      uses: securego/gosec@master
-      with:
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
           args: '-no-fail -fmt sarif -out gosec.sarif ./...'
 
-    - name: Upload gosec results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v3
-      with:
-        sarif_file: 'gosec.sarif'
+      - name: Determine repository visibility
+        id: repo_visibility
+        run: |
+          if [[ "${{ github.event.repository.private }}" == "false" ]]; then
+            echo "is_public=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_public=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload SARIF to GitHub Security (public repo)
+        if: steps.repo_visibility.outputs.is_public == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'gosec.sarif'
+
+      - name: Save SARIF as artifact (private repo)
+        if: steps.repo_visibility.outputs.is_public == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gosec-results
+          path: gosec.sarif
+          retention-days: 7
 
   build:
     name: Build
@@ -81,16 +95,16 @@ jobs:
         include:
           - os: ubuntu-latest
             make_target: build-linux
-            binary_name: wbcm-linux
-            archive_name: wbcm-linux.tar.gz
+            binary_name: wbcr-linux
+            archive_name: wbcr-linux.tar.gz
           - os: windows-latest
             make_target: build-windows
-            binary_name: wbcm.exe
-            archive_name: wbcm-windows.zip
+            binary_name: wbcr.exe
+            archive_name: wbcr-windows.zip
           - os: macos-latest
             make_target: build-macos
-            binary_name: wbcm-macos
-            archive_name: wbcm-macos.tar.gz
+            binary_name: wbcr-macos
+            archive_name: wbcr-macos.tar.gz
 
     steps:
     - name: Checkout code
@@ -154,7 +168,7 @@ jobs:
 
     - name: Create multi-arch packages
       run: |
-        for binary in wbcm32.exe wbcm-linux-arm wbcm-linux32 wbcm-macos-arm; do
+        for binary in wbcr32.exe wbcr-linux-arm wbcr-linux32 wbcr-macos-arm; do
           mkdir -p release-package-$binary
           
           cp binaries/$binary release-package-$binary/
@@ -176,17 +190,16 @@ jobs:
       with:
         name: multi-arch-binaries
         path: |
-          wbcm32.exe.zip
-          wbcm-linux-arm.tar.gz
-          wbcm-linux32.tar.gz
-          wbcm-macos-arm.tar.gz
+          wbcr32.exe.zip
+          wbcr-linux-arm.tar.gz
+          wbcr-linux32.tar.gz
+          wbcr-macos-arm.tar.gz
 
   release:
     name: Release
     runs-on: ubuntu-latest
     needs: [build, build-multiarch]
-    if: github.event_name == 'release' && github.event.action == 'published'
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
@@ -198,13 +211,13 @@ jobs:
       uses: softprops/action-gh-release@v1
       with:
         files: |
-          build-linux/wbcm-linux.tar.gz
-          build-windows/wbcm-windows.zip
-          build-macos/wbcm-macos.tar.gz
-          multi-arch-binaries/wbcm32.exe.zip
-          multi-arch-binaries/wbcm-linux-arm.tar.gz
-          multi-arch-binaries/wbcm-linux32.tar.gz
-          multi-arch-binaries/wbcm-macos-arm.tar.gz
+          build-linux/wbcr-linux.tar.gz
+          build-windows/wbcr-windows.zip
+          build-macos/wbcr-macos.tar.gz
+          multi-arch-binaries/wbcr32.exe.zip
+          multi-arch-binaries/wbcr-linux-arm.tar.gz
+          multi-arch-binaries/wbcr-linux32.tar.gz
+          multi-arch-binaries/wbcr-macos-arm.tar.gz
         draft: false
         prerelease: false
       env:

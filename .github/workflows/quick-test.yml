@@ -2,9 +2,7 @@ name: Quick Test
 
 on:
   push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
+    branches: [ master, develop ]
 
 jobs:
   test:
@@ -35,3 +33,43 @@ jobs:
 
     - name: Run tests
       run: make ci-test
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Gosec Security Scanner
+        uses: securego/gosec@master
+        with:
+          args: '-no-fail -fmt sarif -out gosec.sarif ./...'
+
+      - name: Determine repository visibility
+        id: repo_visibility
+        run: |
+          if [[ "${{ github.event.repository.private }}" == "false" ]]; then
+            echo "is_public=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_public=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Upload SARIF to GitHub Security (public repo)
+        if: steps.repo_visibility.outputs.is_public == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'gosec.sarif'
+
+      - name: Save SARIF as artifact (private repo)
+        if: steps.repo_visibility.outputs.is_public == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gosec-results
+          path: gosec.sarif
+          retention-days: 7

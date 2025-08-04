@@ -15,55 +15,55 @@ build-all: binaries build-windows build-windows32 build-linux build-linux-arm bu
 
 ifeq ($(OS),Windows_NT)
 build-current: binaries
-	set CGO_ENABLED=0&&  go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcm.exe ./cmd
+	set CGO_ENABLED=0&&  go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcr.exe ./cmd
 
 build-windows: binaries
-	set GOOS=windows&& set GOARCH=amd64&& set CGO_ENABLED=0&&  go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcm.exe ./cmd
+	set GOOS=windows&& set GOARCH=amd64&& set CGO_ENABLED=0&&  go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcr.exe ./cmd
 
 build-windows32: binaries
-	set GOOS=windows&& set GOARCH=386&& set CGO_ENABLED=0&&  go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcm32.exe ./cmd
+	set GOOS=windows&& set GOARCH=386&& set CGO_ENABLED=0&&  go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcr32.exe ./cmd
 
 build-linux: binaries
-	set GOOS=linux&& set GOARCH=amd64&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-linux ./cmd
+	set GOOS=linux&& set GOARCH=amd64&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-linux ./cmd
 
 build-linux-arm: binaries
-	set GOOS=linux&& set GOARCH=arm&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-linux-arm ./cmd
+	set GOOS=linux&& set GOARCH=arm&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-linux-arm ./cmd
 
 build-linux32: binaries
-	set GOOS=linux&& set GOARCH=386&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-linux32 ./cmd
+	set GOOS=linux&& set GOARCH=386&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-linux32 ./cmd
 
 build-macos: binaries
-	set GOOS=darwin&& set GOARCH=amd64&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-macos ./cmd
+	set GOOS=darwin&& set GOARCH=amd64&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-macos ./cmd
 
 build-macos-arm: binaries
-	set GOOS=darwin&& set GOARCH=arm64&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-macos-arm ./cmd
+	set GOOS=darwin&& set GOARCH=arm64&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-macos-arm ./cmd
 
 build-macos32: binaries
-	set GOOS=darwin&& set GOARCH=386&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-macos-32 ./cmd
+	set GOOS=darwin&& set GOARCH=386&& set CGO_ENABLED=0&& go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-macos-32 ./cmd
 else
 build-current: binaries
-	CGO_ENABLED=0 go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcm ./cmd
+	CGO_ENABLED=0 go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcr ./cmd
 
 build-windows: binaries
-	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcm.exe ./cmd
+	GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcr.exe ./cmd
 
 build-windows32: binaries
-	GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcm32.exe ./cmd
+	GOOS=windows GOARCH=386 CGO_ENABLED=0 go build -ldflags="-s -w -extldflags \"-static\"" -o ${BINARIES_PATH}/wbcr32.exe ./cmd
 
 build-linux: binaries
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-linux ./cmd
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-linux ./cmd
 
 build-linux-arm: binaries
-	GOOS=linux GOARCH=arm CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-linux-arm ./cmd
+	GOOS=linux GOARCH=arm CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-linux-arm ./cmd
 
 build-linux32: binaries
-	GOOS=linux GOARCH=386 CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-linux32 ./cmd
+	GOOS=linux GOARCH=386 CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-linux32 ./cmd
 
 build-macos: binaries
-	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-macos ./cmd
+	GOOS=darwin GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-macos ./cmd
 
 build-macos-arm: binaries
-	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcm-macos-arm ./cmd
+	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-macos-arm ./cmd
 
 endif
 
