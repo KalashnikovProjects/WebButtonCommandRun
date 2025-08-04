@@ -88,7 +88,7 @@ test-race:
 test-coverage:
 	go test -v -coverprofile=coverage.out ./...
 
-lint:
+lint: install-lint
 	golangci-lint run
 
 ci-build: build-all
