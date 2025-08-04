@@ -168,7 +168,7 @@ jobs:
       with:
         files: |
           builds/wbcr-windows.zip
-          builds/wbcr32-windows.zip
+          builds/wbcr-windows32.zip
           builds/wbcr-linux.tar.gz
           builds/wbcr-linux-arm.tar.gz
           builds/wbcr-linux32.tar.gz
