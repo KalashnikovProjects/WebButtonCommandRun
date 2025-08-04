@@ -141,7 +141,7 @@ jobs:
         fi
 
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ${{ matrix.make_target }}
         path: ${{ matrix.archive_name }}
@@ -186,7 +186,7 @@ jobs:
         done
 
     - name: Upload multi-arch artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: multi-arch-binaries
         path: |
