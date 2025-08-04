@@ -35,7 +35,7 @@ jobs:
       run: go mod download
 
     - name: Run tests
-      run: make test-race test-coverage
+      run: make test-race test-coverage lint
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3

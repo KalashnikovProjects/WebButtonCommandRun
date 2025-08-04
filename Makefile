@@ -91,12 +91,7 @@ test-coverage:
 lint:
 	golangci-lint run
 
-security:
-	gosec -fmt sarif -out gosec.sarif ./...
-
-ci-test: test test-race security lint
-
 ci-build: build-all
 
-dev-setup: deps
+install-lint: deps
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest

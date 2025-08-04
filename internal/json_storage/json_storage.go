@@ -50,7 +50,7 @@ func CreateUserConfigIfInvalid() error {
 		Commands:     make([]entities.Command, 0),
 	}
 	if err == nil {
-		err = json.Unmarshal(data, &UserConfig)
+		_ = json.Unmarshal(data, &UserConfig)
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("error while creating user config file: %w", err)
 	}

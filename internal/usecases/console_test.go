@@ -155,6 +155,9 @@ func TestRunCommand_EditFile(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	tmpFile, err := os.CreateTemp("", "testfile_*.txt")
+	if err != nil {
+		t.Errorf("cant create tmpFile: %v", err)
+	}
 	err = tmpFile.Close()
 	if err != nil {
 		t.Errorf("cant close tmpFile %v", err)
