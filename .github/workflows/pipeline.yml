@@ -111,8 +111,8 @@ jobs:
           "wbcr.exe:wbcr-windows.zip"
           "wbcr32.exe:wbcr-windows32.zip"
           "wbcr-linux:wbcr-linux.tar.gz"
-          "wbcr-linux32:wbcr-linx32.tar.gz"
-          "wbcr-linux-arm:wbcr-linx-arm.tar.gz"
+          "wbcr-linux32:wbcr-linux32.tar.gz"
+          "wbcr-linux-arm:wbcr-linux-arm.tar.gz"
           "wbcr-macos:wbcr-macos.tar.gz"
           "wbcr-macos-arm:wbcr-macos-arm.tar.gz"
         )
@@ -139,7 +139,7 @@ jobs:
     - name: Upload multi-arch artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: binaries
+        name: builds
         path: |
           wbcr-windows.zip
           wbcr-windows32.zip
@@ -174,7 +174,5 @@ jobs:
           builds/wbcr-linux32.tar.gz
           builds/wbcr-macos.tar.gz
           builds/wbcr-macos-arm.tar.gz
-        draft: false
-        prerelease: false
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
