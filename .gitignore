@@ -4,10 +4,3 @@
 binaries/
 *.log
 test.txt
-wbcr.exe
-wbcr32.exe
-wbcr-linux
-wbcr-linux32
-wbcr-linux-arm
-wbcr-macos
-wbcr-macos-arm
