@@ -1,6 +1,7 @@
 BINARIES_PATH ?= binaries
 
-.PHONY: all clean build-all
+
+.PHONY: all binaries clean build-all build-current build-macos32 build-macos build-macos-arm build-linux32 build-linux build-linux-arm build-windows32 build-windows test-race test-coverage install-lint lint test deps
 
 all: test test-coverage test-race lint build-all
 
@@ -64,7 +65,6 @@ build-macos: binaries
 
 build-macos-arm: binaries
 	GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o ${BINARIES_PATH}/wbcr-macos-arm ./cmd
-
 endif
 
 clean:

@@ -118,9 +118,10 @@ jobs:
         )
         
         for pair in "${pairs[@]}"; do
-          binary="${pair%%:*}"   # Часть до двоеточия
+          binary="${pair%%:*}"
           name="${pair#*:}"
-        
+          echo $binary
+          echo $name
           mkdir -p release-package-$name
           cp binaries/$binary release-package-$name/
         
@@ -129,12 +130,14 @@ jobs:
           
           # Create archive, add pty folder in windows
           if [[ $binary == *.exe ]]; then
-            cp -r pty release-package-name/
+            cp -r pty release-package-$name/
             cd "release-package-$name" 
-            zip -r "../$name" .
+            zip -r "$name" .
+            cd ..
           else
             tar -czf $name -C release-package-$name .
           fi
+          rmdir release-package-$name
         done
 
     - name: Upload multi-arch artifacts
