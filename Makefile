@@ -2,7 +2,7 @@ BINARIES_PATH ?= binaries
 
 .PHONY: all clean build-all
 
-all: build-all
+all: test test-coverage test-race lint build-all
 
 binaries:
 ifeq ($(OS),Windows_NT)
@@ -90,8 +90,6 @@ test-coverage:
 
 lint: install-lint
 	golangci-lint run
-
-ci-build: build-all
 
 install-lint: deps
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest

@@ -54,5 +54,5 @@ func CreateApp() *fiber.App {
 }
 
 func RunApp(app *fiber.App) error {
-	return app.Listen(fmt.Sprintf(":%s", config.Config.PORT))
+	return app.Listen(fmt.Sprintf(":%d", config.Config.PORT))
 }

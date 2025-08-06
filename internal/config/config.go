@@ -1,17 +1,22 @@
 package config
 
 import (
+	"flag"
 	"fmt"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/joho/godotenv"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"time"
 )
 
+var portFlag int
+var flagsInited bool
+
 type StructOfConfig struct {
-	PORT                   string
+	PORT                   int
 	RootDir                string
 	LogLevel               log.Level
 	Console                string // sh or cmd
@@ -29,6 +34,12 @@ func DetectDefaultConsole() string {
 }
 
 func InitConfigs(rootDir string) error {
+	if !flagsInited {
+		flag.IntVar(&portFlag, "port", -1, "port which the server will listen")
+		flagsInited = true
+	}
+	flag.Parse()
+	var err error
 	Config = &StructOfConfig{}
 	envFilename, ok := os.LookupEnv("ENV_FILE")
 	if ok {
@@ -39,11 +50,19 @@ func InitConfigs(rootDir string) error {
 
 	Config.RootDir = rootDir
 	Config.UserConfigPath = filepath.Join(Config.RootDir, "data/commands-config.json")
-	port, ok := os.LookupEnv("PORT")
-	if ok {
-		Config.PORT = port
+
+	if portFlag == -1 {
+		port, ok := os.LookupEnv("PORT")
+		if ok {
+			Config.PORT, err = strconv.Atoi(port)
+			if err != nil {
+				Config.PORT = 8080
+			}
+		} else {
+			Config.PORT = 8080
+		}
 	} else {
-		Config.PORT = "80"
+		Config.PORT = portFlag
 	}
 	Config.LogLevel = log.Level(map[string]int{"trace": 0, "debug": 1, "info": 2, "warn": 3, "error": 4, "fatal": 5, "panic": 6}[os.Getenv("LogLevel")])
 	Config.WebsocketWriteInterval = time.Millisecond * 50
