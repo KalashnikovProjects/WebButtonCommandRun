@@ -134,6 +134,7 @@ jobs:
             cd "release-package-$name" 
             zip -r "$name" .
             cd ..
+            mv release-package-$name/$name $name
           else
             tar -czf $name -C release-package-$name .
           fi
