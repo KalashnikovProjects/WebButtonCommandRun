@@ -137,7 +137,6 @@ jobs:
           else
             tar -czf $name -C release-package-$name .
           fi
-          rmdir -r release-package-$name
         done
 
     - name: Upload multi-arch artifacts
