@@ -155,7 +155,7 @@ function importConfig(event) {
                 popup.innerHTML = `
                   <div class="popup-backdrop"></div>
                   <div class="popup-content">
-                    <p>Config use another console: <b>${json["using-console"]}</b> (need: <b>${consoleUsing}</b>). Do import?</p>
+                    <p>Config use another console: <b id="using-console-warn"></b> (need: <b id="need-console-warn"></b>). Do import?</p>
                     <div class="popup-buttons">
                       <button id="popup-cancel-btn" class="normal-button red-button">Cancel</button>
                       <button id="popup-confirm-btn" class="normal-button">Import</button>
@@ -163,6 +163,9 @@ function importConfig(event) {
                   </div>
                 `;
                 document.body.appendChild(popup);
+
+                document.getElementById("using-console-warn").innerText = json["using-console"]
+                document.getElementById("need-console-warn").innerText = consoleUsing
                 document.getElementById('popup-confirm-btn').onclick = function() {
                   fetch(`${apiBase}json-config`, {
                       method: "POST",
