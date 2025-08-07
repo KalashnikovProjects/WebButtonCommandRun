@@ -34,7 +34,7 @@ func RunCommandWebsocket(c *websocket.Conn) {
 		err error
 	)
 	commandId, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	if err != nil || commandId < 0 {
 		data := websocket.FormatCloseMessage(1003, "bad command id")
 		if err = c.WriteMessage(websocket.CloseMessage, data); err != nil {
 			log.Warn("Error writing close message", err)

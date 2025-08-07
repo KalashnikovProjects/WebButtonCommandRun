@@ -31,7 +31,7 @@ func GetCommands(c *fiber.Ctx) error {
 
 func GetCommand(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	if err != nil || id < 0 {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid command id")
 	}
 	command, err := usecases.GetCommand(uint(id))
@@ -45,7 +45,7 @@ func GetCommand(c *fiber.Ctx) error {
 
 func PatchCommand(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	if err != nil || id < 0 {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid command id")
 	}
 	var command entities.Command
@@ -64,7 +64,7 @@ func PatchCommand(c *fiber.Ctx) error {
 
 func PutCommand(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	if err != nil || id < 0 {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid command id")
 	}
 	var command entities.Command
@@ -83,7 +83,7 @@ func PutCommand(c *fiber.Ctx) error {
 
 func DeleteCommand(c *fiber.Ctx) error {
 	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	if err != nil || id < 0 {
 		return fiber.NewError(fiber.StatusBadRequest, "invalid command id")
 	}
 	err = usecases.DeleteCommand(uint(id))
