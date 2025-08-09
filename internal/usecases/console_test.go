@@ -161,25 +161,34 @@ func TestRunCommand_EditFile(t *testing.T) {
 		t.Fatalf("error getting current user: %v", err)
 	}
 	tmpFile, err := os.CreateTemp(usr.HomeDir, "testfile_*.txt")
-	s, _ := tmpFile.Readdirnames(-1)
-	log.Debug(s)
 	if err != nil {
 		t.Fatalf("cant create tmpFile: %v", err)
+	}
+
+	defer func(name string) {
+		err := os.Remove(name)
+		if err != nil {
+			t.Errorf("cant delete tmpFile: %v", err)
+		}
+	}(tmpFile.Name())
+
+	inputTestText := "Hello from copy 7\x08con!\r"
+	outputText := "Hello from copy con!\r"
+	var commandText string
+	stat, err := tmpFile.Stat()
+	if err != nil {
+		t.Fatalf("cant stat tmpFile: %v", err)
 	}
 	err = tmpFile.Close()
 	if err != nil {
 		t.Fatalf("cant close tmpFile %v", err)
 	}
 
-	inputTestText := "Hello from copy 7\x08con!\r"
-	outputText := "Hello from copy con!\r"
-	var commandText string
 	if runtime.GOOS == "windows" {
-		commandText = fmt.Sprintf("copy con %s", tmpFile.Name())
+		commandText = fmt.Sprintf("copy con %s", stat.Name())
 	} else {
-		commandText = fmt.Sprintf("nano %s", tmpFile.Name())
+		commandText = fmt.Sprintf("nano %s", stat.Name())
 	}
-
 	command, err := RunCommand(ctx, commandText, entities.CommandOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
