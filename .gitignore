@@ -5,3 +5,4 @@ binaries/
 *.log
 test.txt
 data/commands-config.json
+coverage.out
