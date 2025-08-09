@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/user"
 )
 
 type unixCommand struct {
@@ -19,16 +20,26 @@ type unixCommand struct {
 }
 
 func RunCommand(command string, options entities.CommandOptions) (Command, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return nil, fmt.Errorf("error getting user home: %w", err)
+	}
+	homeDir := usr.HomeDir
+
 	cmd := exec.Command(config.Config.Console, "-c", command)
-	cmd.Env = options.Env
+	cmd.Dir = homeDir
+	cmd.Env = append(options.Env, "HOME="+homeDir, "PWD="+homeDir)
+
 	commandPty, err := pty.Start(cmd)
 	if err != nil {
 		return nil, fmt.Errorf("error starting pty console: %w", err)
 	}
+
 	err = pty.Setsize(commandPty, &pty.Winsize{Rows: options.Rows, Cols: options.Cols})
 	if err != nil {
 		return nil, fmt.Errorf("error updating pty console size: %w", err)
 	}
+
 	return unixCommand{cmd: cmd, pty: commandPty}, err
 }
 

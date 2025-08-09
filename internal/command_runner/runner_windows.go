@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/user"
 	"path/filepath"
 
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
@@ -18,10 +19,16 @@ type windowsCommand struct {
 }
 
 func RunCommand(command string, options entities.CommandOptions) (Command, error) {
+	usr, err := user.Current()
+	if err != nil {
+		return nil, fmt.Errorf("error getting user home: %w", err)
+	}
+	homeDir := usr.HomeDir
 	wp, err := winpty.OpenWithOptions(winpty.Options{
+		Dir:         homeDir,
 		DLLPrefix:   filepath.Join(config.Config.RootDir, "pty"),
 		Command:     fmt.Sprintf("%s /C %s", config.Config.Console, command),
-		Env:         append(os.Environ(), options.Env...),
+		Env:         append(append(os.Environ(), "HOME="+homeDir, "USERPROFILE="+homeDir, "PWD="+homeDir), options.Env...),
 		InitialRows: uint32(options.Rows),
 		InitialCols: uint32(options.Cols),
 	})

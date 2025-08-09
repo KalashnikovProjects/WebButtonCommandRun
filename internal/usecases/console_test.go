@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"os"
 	"os/exec"
+	"os/user"
 	"runtime"
 	"strings"
 	"testing"
@@ -154,13 +155,20 @@ func TestRunCommand_EditFile(t *testing.T) {
 	_ = config.InitConfigs("../..")
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	tmpFile, err := os.CreateTemp("", "testfile_*.txt")
+
+	usr, err := user.Current()
 	if err != nil {
-		t.Errorf("cant create tmpFile: %v", err)
+		t.Fatalf("error getting current user: %v", err)
+	}
+	tmpFile, err := os.CreateTemp(usr.HomeDir, "testfile_*.txt")
+	s, _ := tmpFile.Readdirnames(-1)
+	log.Debug(s)
+	if err != nil {
+		t.Fatalf("cant create tmpFile: %v", err)
 	}
 	err = tmpFile.Close()
 	if err != nil {
-		t.Errorf("cant close tmpFile %v", err)
+		t.Fatalf("cant close tmpFile %v", err)
 	}
 
 	inputTestText := "Hello from copy 7\x08con!\r"
