@@ -1,9 +1,16 @@
 package entities
 
-type CommandOptions struct {
+type TerminalOptions struct {
 	Cols uint16   `json:"cols"`
 	Rows uint16   `json:"rows"`
 	Env  []string `json:"-"`
+}
+
+type EmbeddedFile struct {
+	ID        uint   `json:"id"`
+	CommandID uint   `json:"command-id"`
+	Name      string `json:"name"`
+	DataPath  string `json:"-"`
 }
 
 type UserConfig struct {
@@ -11,8 +18,9 @@ type UserConfig struct {
 	Commands     []Command `json:"commands"`
 }
 
-// Command ID - index of element in UserConfig.Commands
 type Command struct {
-	Name    string `json:"name"`
-	Command string `json:"command"`
+	ID      uint           `json:"id"`
+	Name    string         `json:"name"`
+	Command string         `json:"command"`
+	Files   []EmbeddedFile `json:"files"`
 }

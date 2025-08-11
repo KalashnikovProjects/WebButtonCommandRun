@@ -29,43 +29,43 @@ function smoothHorizontalScroll(e) {
     e.preventDefault();
     e.stopPropagation();
     let el = e.currentTarget;
-    if (el.scrollLeft === scrollTargetLeft) scrollSumDelta = 0
-    if (scrollSumDelta === 0) scrollStartLeft = el.scrollLeft
-    scrollSumDelta -= e.deltaY
+    if (el.scrollLeft === scrollTargetLeft) scrollSumDelta = 0;
+    if (scrollSumDelta === 0) scrollStartLeft = el.scrollLeft;
+    scrollSumDelta -= e.deltaY;
     const maxScrollLeft = el.scrollWidth - el.clientWidth;
     const left = Math.min(maxScrollLeft, Math.max(0, scrollStartLeft - scrollSumDelta));
-    scrollTargetLeft = left
-    el.scrollTo({left, behavior: "smooth"})
+    scrollTargetLeft = left;
+    el.scrollTo({left, behavior: "smooth"});
 }
 
 function toggleMenu(event) {
-    let elem = document.getElementById("right-menu")
+    let elem = document.getElementById("right-menu");
     if (elem.classList.contains("hidden")) {
-        elem.classList.remove("hidden")
+        elem.classList.remove("hidden");
     } else {
-        elem.classList.add("hidden")
+        elem.classList.add("hidden");
     }
 }
 
 function runCommand(event) {
-    fitAddon.fit()
-    term.resize(term.cols - 2, term.rows)
-    let protocol
+    fitAddon.fit();
+    term.resize(term.cols - 2, term.rows);
+    let protocol;
     if (location.protocol === "https") {
         protocol = "wss"
     } else {
         protocol = "ws"
     }
-    terminalWebsocket = new WebSocket(`${protocol}://${location.host}${apiBase}ws/commands/${commandId}`)
-    document.getElementById("command-up-terminal").innerText = currentCommand.name
-    let interval
+    terminalWebsocket = new WebSocket(`${protocol}://${location.host}${apiBase}ws/commands/${commandId}`);
+    document.getElementById("command-up-terminal").innerText = currentCommand.name;
+    let interval;
     terminalWebsocket.onopen = (event) => {
-        term.write('\x1b[?25h')
-        term.reset()
-        term.writeln("> " + currentCommand.command)
-        commandRunning = true
-        term.options.disableStdin = false
-        document.body.classList.add("terminal-opened")
+        term.write('\x1b[?25h');
+        term.reset();
+        term.writeln("> " + currentCommand.command);
+        commandRunning = true;
+        term.options.disableStdin = false;
+        document.body.classList.add("terminal-opened");
         terminalWebsocket.send(JSON.stringify({"message-type": "options", "options": {
                 "rows": term.rows,
                 "cols": term.cols,
@@ -75,15 +75,15 @@ function runCommand(event) {
                 terminalWebsocket.send(JSON.stringify({"message-type": "terminal-input", "data": termInputedText.join("")}));
                 termInputedText = [];
             }
-        }, WebsocketSendInterval)
+        }, WebsocketSendInterval);
 
     }
     terminalWebsocket.onmessage = (event) => {
         try {
-            let data = JSON.parse(event.data)
+            let data = JSON.parse(event.data);
             switch (data["message-type"]) {
                 case "data":
-                    console.log("get data", data)
+                    console.log("get data", data);
                     term.write(data.data);
                     break
             }
@@ -91,36 +91,36 @@ function runCommand(event) {
     }
     terminalWebsocket.onclose = (event) => {
         if (interval) {
-            clearInterval(interval)
+            clearInterval(interval);
         }
-        term.write('\x1b[?25l')
-        termInputedText = []
-        commandRunning = false
-        term.options.disableStdin = true
+        term.write('\x1b[?25l');
+        termInputedText = [];
+        commandRunning = false;
+        term.options.disableStdin = true;
         try {
             switch (event.code) {
                 case 1000:
                     term.writeln('\n');
-                    term.writeln(`\x1b[1;32mFinished\x1b[0m`)
+                    term.writeln(`\x1b[1;32mFinished\x1b[0m`);
                     break
                 case 4001:
                     return
                 default:
                     term.writeln('\n');
-                    term.writeln(`\x1b[1;31mDisconected: ${event.code} ${event.reason}\x1b[0m`)
+                    term.writeln(`\x1b[1;31mDisconected: ${event.code} ${event.reason}\x1b[0m`);
                 }
         } catch (e) {}
     }
 }
 
 function closeTerminal(event) {
-    terminalWebsocket.close(4001, "terminal closed from frontend")
-    document.body.classList.remove("terminal-opened")
+    terminalWebsocket.close(4001, "terminal closed from frontend");
+    document.body.classList.remove("terminal-opened");
 }
 
 function restartCommand(event) {
-    terminalWebsocket.close(4001, "terminal closed from frontend")
-    runCommand(event)
+    terminalWebsocket.close(4001, "terminal closed from frontend");
+    runCommand(event);
 }
 
 function saveConfig(event) {
@@ -131,7 +131,7 @@ function saveConfig(event) {
     ).then(
         data => {
             const jsonString = JSON.stringify(data, null, 2);
-            saveFile("commands-config.json", new Blob([jsonString], { type: 'application/json' }))
+            saveFile("commands-config.json", new Blob([jsonString], { type: 'application/json' }));
         }
     )
 }
@@ -164,21 +164,22 @@ function importConfig(event) {
                 `;
                 document.body.appendChild(popup);
 
-                document.getElementById("using-console-warn").innerText = json["using-console"]
-                document.getElementById("need-console-warn").innerText = consoleUsing
+                document.getElementById("using-console-warn").innerText = json["using-console"];
+                document.getElementById("need-console-warn").innerText = consoleUsing;
                 document.getElementById('popup-confirm-btn').onclick = function() {
                   fetch(`${apiBase}json-config`, {
                       method: "POST",
                       headers: {
                           'Content-Type': 'application/json'
                       },
-                      body: JSON.stringify(json)
+                      body: JSON.stringify(json),
                   }).then(
                       response => {
-                          commandId = 0
-                          let prom = loadCommands();
-                          prom.then(renderCommandsList)
-                          prom.then(loadCommand)
+                          let prom = loadCommands().then(() => {
+                              commandId = commandsList[0].id;
+                          });
+                          prom.then(renderCommandsList);
+                          prom.then(loadCommand);
                       }
                   ).catch(err => {
                       console.error('Ошибка:', err);
@@ -199,10 +200,11 @@ function importConfig(event) {
                 body: JSON.stringify(json)
             }).then(
                 response => {
-                    commandId = 0
-                    let prom = loadCommands();
-                    prom.then(renderCommandsList)
-                    prom.then(loadCommand)
+                    let prom = loadCommands().then(() => {
+                        commandId = commandsList[0].id;
+                    });
+                    prom.then(renderCommandsList);
+                    prom.then(loadCommand);
                 }
             ).catch(err => {
                 console.error('Ошибка:', err);
@@ -231,49 +233,66 @@ function renderRunButtonContainer() {
             <textarea id="main-command-input" class="command-text main-command-text" placeholder="command" spellcheck="false" onWheel="smoothHorizontalScroll(event)"></textarea>
         </div>`
 
-    document.getElementById("edit-button").addEventListener("click", editCommand)
-    document.getElementById("big-run-button").addEventListener("click", runCommand)
-    document.getElementById("main-name-input").value = currentCommand.name
-    document.getElementById("main-command-input").value = currentCommand.command
+    document.getElementById("edit-button").addEventListener("click", editCommand);
+    document.getElementById("big-run-button").addEventListener("click", runCommand);
+    document.getElementById("main-name-input").value = currentCommand.name;
+    document.getElementById("main-command-input").value = currentCommand.command;
 
     document.getElementById("main-name-input").addEventListener("blur", (event) => {
         if (currentCommand.name !== event.target.value) {
             fetch(`${apiBase}commands/${commandId}`, {
-                method: "PATCH",
+                method: "PUT",
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
                     name: String(event.target.value),
+                    command: currentCommand.command,
                 })
             }).then(response => {
-                currentCommand.name = event.target.value
-                commandsList[commandId] = currentCommand
-                renderCommandsList()
+                currentCommand.name = String(event.target.value);
+                if (currentCommand.name === "") {
+                    loadCommand().then(() => {
+                        for (let i=0; i<commandsList.length; i++) {
+                            if (commandsList[i].id === commandId) {
+                                commandsList[i] = currentCommand;
+                            }
+                        }
+                        renderCommandsList();
+                    })
+                } else {
+                    for (let i=0; i<commandsList.length; i++) {
+                        if (commandsList[i].id === commandId) {
+                            commandsList[i] = currentCommand;
+                        }
+                    }
+                    renderCommandsList();
+                }
             }).catch(err => {
                 console.error('Ошибка:', err);
                 alert('Ошибка: ' + err.message);
             });
         }
-    })
+    });
     document.getElementById("main-command-input").addEventListener("blur", (event) => {
         if (currentCommand.command !== event.target.value) {
             fetch(`${apiBase}commands/${commandId}`, {
-                method: "PATCH",
+                method: "PUT",
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
+                    name: currentCommand.name,
                     command: String(event.target.value),
                 })
             }).then(response => {
-                currentCommand.command = event.target.value
+                currentCommand.command = String(event.target.value);
             }).catch(err => {
                 console.error('Ошибка:', err);
                 alert('Ошибка: ' + err.message);
             });
         }
-    })
+    });
 }
 
 function renderNoCommands() {
@@ -284,46 +303,48 @@ function renderNoCommands() {
         <button id="add-new-command-center" class="normal-button" style="height: auto;padding: 12px 25px;">
             Add command
         </button>
-    `
-    document.getElementById("add-new-command-center").addEventListener("click", addNewCommand)
+    `;
+    document.getElementById("add-new-command-center").addEventListener("click", addNewCommand);
 }
 
 function initPage() {
     fetch(`${apiBase}console-using`, {
         method: "GET"
     }).then(response => response.text()).then(text => {
-        consoleUsing = text
+        consoleUsing = text;
         switch (consoleUsing) {
             case "cmd":
-                document.getElementById("using-console-indicator").innerHTML = "using cmd <img src=\"../static/vectors/console-cmd.svg\" alt=\"\"/>"
+                document.getElementById("using-console-indicator").innerHTML = "using cmd <img src=\"../static/vectors/console-cmd.svg\" alt=\"\"/>";
                 break
             case "sh":
-                document.getElementById("using-console-indicator").innerHTML = "using sh <img src=\"../static/vectors/console-bash.svg\" alt=\"\"/>"
+                document.getElementById("using-console-indicator").innerHTML = "using sh <img src=\"../static/vectors/console-bash.svg\" alt=\"\"/>";
                 break
             default:
-                document.getElementById("using-console-indicator").innerHTML = "unknown console"
+                document.getElementById("using-console-indicator").innerHTML = "unknown console";
         }
     }).catch(err => {
         console.error('Ошибка:', err);
         alert('Ошибка: ' + err.message);
     })
 
-    document.getElementById("open-menu-button").addEventListener("click", toggleMenu)
-    document.getElementById("close-button").addEventListener("click", closeTerminal)
-    document.getElementById("restart-button").addEventListener("click", restartCommand)
-    document.getElementById("save-config-button").addEventListener("click", saveConfig)
-    document.getElementById("import-config-button").addEventListener("click", importConfig)
+    document.getElementById("open-menu-button").addEventListener("click", toggleMenu);
+    document.getElementById("close-button").addEventListener("click", closeTerminal);
+    document.getElementById("restart-button").addEventListener("click", restartCommand);
+    document.getElementById("save-config-button").addEventListener("click", saveConfig);
+    document.getElementById("import-config-button").addEventListener("click", importConfig);
     document.getElementById("command-list").addEventListener("wheel", smoothHorizontalScroll, { passive: false });
 
-    let a = window.location.hash.split("-")
+    let a = window.location.hash.split("-");
 
-    if (a.length === 2) {
-        commandId = Number(a[1])
-    } else {
-        commandId = 0
-    }
-    loadCommands().then(() => renderCommandsList(true))
-    loadCommand()
+    let prom = loadCommands().then(() => {
+        if (a.length === 2) {
+            commandId = Number(a[1]);
+        } else {
+            commandId = commandsList[0].id;
+        }
+    });
+    prom.then(() => renderCommandsList(true));
+    prom.then(loadCommand);
 }
 
 function editCommand(event) {
@@ -343,25 +364,26 @@ function editCommand(event) {
     document.body.appendChild(popup);
 
     setTimeout(() => {
-        document.querySelector(".popup-backdrop").classList.remove("hidden")
-        document.querySelector(".popup-content").classList.remove("hidden")
+        document.querySelector(".popup-backdrop").classList.remove("hidden");
+        document.querySelector(".popup-content").classList.remove("hidden");
     }, 20)
     document.getElementById("delete-command-btn").addEventListener("click", () => {
         fetch(`${apiBase}commands/${commandId}`, {
             method: "DELETE"
         }).then(response => {
-            commandsList.splice(commandId, 1);
-            commandId = 0
-            loadCommand()
-            renderCommandsList()
-            document.querySelector(".popup-backdrop").classList.add("hidden")
-            document.querySelector(".popup-content").classList.add("hidden")
+            for (let i=0; i<commandsList.length; i++) {
+                if (commandsList[i].id === commandId) {
+                    commandsList.splice(i, 1);
+                }
+            }
+            loadCommand();
+            renderCommandsList();
+            document.querySelector(".popup-backdrop").classList.add("hidden");
+            document.querySelector(".popup-content").classList.add("hidden");
             setTimeout(
-                () => {
-                    document.body.removeChild(popup)
-                },
+                () => document.body.removeChild(popup),
                 300
-            )
+            );
         }).catch(err => {
             console.error('Ошибка:', err);
             alert('Ошибка: ' + err.message);
@@ -369,14 +391,12 @@ function editCommand(event) {
     })
 
     document.getElementById('popup-confirm-btn').onclick = function() {
-        document.querySelector(".popup-backdrop").classList.add("hidden")
-        document.querySelector(".popup-content").classList.add("hidden")
+        document.querySelector(".popup-backdrop").classList.add("hidden");
+        document.querySelector(".popup-content").classList.add("hidden");
         setTimeout(
-            () => {
-                document.body.removeChild(popup)
-            },
+            () => document.body.removeChild(popup),
             300
-        )
+        );
     };
 }
 
@@ -402,12 +422,12 @@ function addNewCommand(event) {
                   </div>`;
     document.body.appendChild(popup);
     setTimeout(() => {
-        document.querySelector(".popup-backdrop").classList.remove("hidden")
-        document.querySelector(".popup-content").classList.remove("hidden")
+        document.querySelector(".popup-backdrop").classList.remove("hidden");
+        document.querySelector(".popup-content").classList.remove("hidden");
     }, 20)
     document.getElementById('popup-confirm-btn').onclick = function() {
-        let name = document.getElementById("popup-input-name").value
-        let command = document.getElementById("popup-input-command").value
+        let name = document.getElementById("popup-input-name").value;
+        let command = document.getElementById("popup-input-command").value;
         fetch(`${apiBase}commands/`, {
             method: "POST",
             headers: {
@@ -418,125 +438,122 @@ function addNewCommand(event) {
                 command: String(command)
             })
         }).then(
-            response => {loadCommands().then(renderCommandsList).then(() => selectCommand(commandsList.length - 1))}
+            response => loadCommands().then(renderCommandsList).then(() => selectCommand(commandsList.at(-1).id))
         ).catch(err => {
             console.error('Ошибка:', err);
             alert('Ошибка: ' + err.message);
         });
-        document.querySelector(".popup-backdrop").classList.add("hidden")
-        document.querySelector(".popup-content").classList.add("hidden")
+        document.querySelector(".popup-backdrop").classList.add("hidden");
+        document.querySelector(".popup-content").classList.add("hidden");
         setTimeout(
             () => {
-                document.body.removeChild(popup)
+                document.body.removeChild(popup);
             },
             300
-        )
+        );
     };
     document.getElementById('popup-cancel-btn').onclick = function() {
-        document.querySelector(".popup-backdrop").classList.add("hidden")
-        document.querySelector(".popup-content").classList.add("hidden")
+        document.querySelector(".popup-backdrop").classList.add("hidden");
+        document.querySelector(".popup-content").classList.add("hidden");
         setTimeout(
             () => {
-                document.body.removeChild(popup)
+                document.body.removeChild(popup);
             },
             300
-        )
+        );
     };
 }
 
 function selectButtonIcons(id) {
     for (let button of document.querySelectorAll(".command-list li:not(#new-command-btn)")) {
         if (Number(button.id.split("-")[2]) === id) {
-            button.querySelector("img").src = "../static/vectors/selected.svg"
-            button.classList.add("selected")
+            button.querySelector("img").src = "../static/vectors/selected.svg";
+            button.classList.add("selected");
         } else {
-            button.querySelector("img").src = "../static/vectors/arrow.svg"
-            button.classList.remove("selected")
+            button.querySelector("img").src = "../static/vectors/arrow.svg";
+            button.classList.remove("selected");
         }
     }
 }
 
 function selectCommand(num) {
     if (document.body.classList.contains("terminal-opened")) {
-        closeTerminal()
+        closeTerminal();
     }
     commandId=num;
     selectButtonIcons(num);
-    loadCommand()
+    loadCommand();
 }
 
 function loadCommand() {
     location.hash=`command-${commandId}`;
-    fetch(`${apiBase}commands/${commandId}`, {
+    return fetch(`${apiBase}commands/${commandId}`, {
         method: "GET"
     }).then(response => response.json()).then(data => {
-        currentCommand = data
-        renderRunButtonContainer()
+        currentCommand = data;
+        renderRunButtonContainer();
     }).catch(err => {
         if (!commandsList || commandsList.length === 0) {
-            commandId = -1
+            commandId = -1;
             location.hash=`no-commands`;
-            renderNoCommands()
+            renderNoCommands();
         }
-        commandId = 0
-        location.hash=`command-0`;
+        commandId = commandsList[0].id;
+        location.hash=`command-${commandId}`;
         fetch(`${apiBase}commands/${commandId}`, {
             method: "GET"
         }).then(response => response.json()).then(data => {
-            currentCommand = data
-            renderRunButtonContainer()
+            currentCommand = data;
+            renderRunButtonContainer();
         }).catch(err => {
-            commandId = -1
+            commandId = -1;
             location.hash=`no-commands`;
-            renderNoCommands()
-        })
+            renderNoCommands();
+        });
     })
 }
 
 function renderCommandsList(withAnimation = false) {
     if (withAnimation) {
-        document.getElementById("command-list").classList.add("gap-0-for-animation")
+        document.getElementById("command-list").classList.add("gap-0-for-animation");
     }
-    let listElem = document.getElementById("command-list")
+    let listElem = document.getElementById("command-list");
     listElem.innerHTML = ""
-    let num = 0
     for (let i of commandsList) {
-        let elem = document.createElement("li")
-        elem.id = `command-btn-${num}`
-        console.log(i, commandsList)
+        let elem = document.createElement("li");
+        elem.id = `command-btn-${i.id}`;
         if (withAnimation) {
-            elem.classList.add("width-0-for-animation")
+            elem.classList.add("width-0-for-animation");
         }
-        elem.innerHTML = `<button class="round-button" onclick="selectCommand(${num})">
+        elem.innerHTML = `<button class="round-button" onclick="selectCommand(${i.id})">
                     <img width="80%" src="../static/vectors/arrow.svg" alt="Select command"/>
                 </button>
                 <p class="command-text command-name" onWheel="smoothHorizontalScroll(event)">
                     ${i.name}
-                </p>`
-        listElem.appendChild(elem)
-        num += 1
+                </p>`;
+        listElem.appendChild(elem);
     }
-    let elem = document.createElement("li")
-    elem.id = `new-command-btn`
+    let elem = document.createElement("li");
+    elem.id = `new-command-btn`;
     if (withAnimation) {
-        elem.classList.add("width-0-for-animation")
+        elem.classList.add("width-0-for-animation");
     }
     elem.innerHTML = `<button class="round-button">
                     <img width="100%" src="../static/vectors/plus.svg" alt="Add new command"/>
                 </button>
                 <p class="command-text command-name" onWheel="smoothHorizontalScroll(event)">
                     Add new
-                </p>`
-    elem.addEventListener("click", addNewCommand)
-    listElem.appendChild(elem)
-    selectButtonIcons(commandId)
+                </p>`;
+    elem.addEventListener("click", addNewCommand);
+    listElem.appendChild(elem);
+    selectButtonIcons(commandId);
     if (withAnimation) {
         setTimeout(() => {
-            document.getElementById("command-list").classList.remove("gap-0-for-animation")
+            document.getElementById("command-list").classList.remove("gap-0-for-animation");
             for (elem of document.querySelectorAll(".width-0-for-animation")) {
-                elem.classList.remove("width-0-for-animation")
+                elem.classList.remove("width-0-for-animation");
             }
-        }, 30)
+        }, 30);
     }
 }
 
@@ -545,11 +562,11 @@ async function loadCommands() {
         let response = await fetch(`${apiBase}commands/`, {
             method: "GET"
         })
-        commandsList = await response.json()
+        commandsList = await response.json();
     } catch (err) {
         console.error('Ошибка:', err);
         alert('Ошибка: ' + err.message);
     }
 }
 
-initPage()
+initPage();

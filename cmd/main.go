@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/json_storage"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/server"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/usecases"
 	"github.com/gofiber/fiber/v2/log"
 )
 
@@ -12,11 +12,14 @@ func main() {
 	if err != nil {
 		log.Fatalw("Error while init configs", err)
 	}
-	err = json_storage.CreateUserConfigIfInvalid()
+	db, err := usecases.CreateDB()
 	if err != nil {
-		log.Fatalw("Error while initialising user config", err)
+		log.Fatalw("Error while connecting to storage", err)
 	}
-	app := server.CreateApp()
+	appData := server.App{
+		DB: &db,
+	}
+	app := server.CreateApp(appData)
 	err = server.RunApp(app)
 	if err != nil {
 		log.Fatalw("Error while running server", err)

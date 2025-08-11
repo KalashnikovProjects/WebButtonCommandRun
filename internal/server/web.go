@@ -6,6 +6,6 @@ import (
 	"path/filepath"
 )
 
-func GetIndex(c *fiber.Ctx) error {
+func (a App) GetIndex(c *fiber.Ctx) error {
 	return c.SendFile(filepath.Join(config.Config.RootDir, "/web/templates/index.html"))
 }

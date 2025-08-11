@@ -25,7 +25,7 @@ func TestRunCommand_Success(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	command, err := RunCommand(ctx, "echo hello", entities.CommandOptions{})
+	command, err := RunCommand(ctx, "echo hello", entities.TerminalOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestRunCommand_InvalidCommand(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	command, err := RunCommand(ctx, "nonexistentcommand1234", entities.CommandOptions{})
+	command, err := RunCommand(ctx, "nonexistentcommand1234", entities.TerminalOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestRunCommand_InvalidCommand(t *testing.T) {
 func TestRunCommand_ContextCancel(t *testing.T) {
 	_ = config.InitConfigs("../..")
 	ctx, cancel := context.WithCancel(context.Background())
-	command, err := RunCommand(ctx, "ping 127.0.0.1", entities.CommandOptions{})
+	command, err := RunCommand(ctx, "ping 127.0.0.1", entities.TerminalOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -118,7 +118,7 @@ func TestRunCommand_PythonInteractive(t *testing.T) {
 		}
 	}
 
-	command, err := RunCommand(ctx, pythonCmd, entities.CommandOptions{})
+	command, err := RunCommand(ctx, pythonCmd, entities.TerminalOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -189,7 +189,7 @@ func TestRunCommand_EditFile(t *testing.T) {
 	} else {
 		commandText = fmt.Sprintf("nano %s", stat.Name())
 	}
-	command, err := RunCommand(ctx, commandText, entities.CommandOptions{})
+	command, err := RunCommand(ctx, commandText, entities.TerminalOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

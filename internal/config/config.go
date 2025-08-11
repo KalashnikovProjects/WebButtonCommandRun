@@ -20,7 +20,7 @@ type StructOfConfig struct {
 	RootDir                string
 	LogLevel               log.Level
 	Console                string // sh or cmd
-	UserConfigPath         string
+	DatabasePath           string
 	WebsocketWriteInterval time.Duration
 }
 
@@ -49,7 +49,7 @@ func InitConfigs(rootDir string) error {
 	}
 
 	Config.RootDir = rootDir
-	Config.UserConfigPath = filepath.Join(Config.RootDir, "data/commands-config.json")
+	Config.DatabasePath = filepath.Join(Config.RootDir, "data/data.db")
 
 	if portFlag == -1 {
 		port, ok := os.LookupEnv("PORT")

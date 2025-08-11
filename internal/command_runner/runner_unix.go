@@ -19,7 +19,7 @@ type unixCommand struct {
 	pty *os.File
 }
 
-func RunCommand(command string, options entities.CommandOptions) (Command, error) {
+func RunCommand(command string, options entities.TerminalOptions) (Command, error) {
 	usr, err := user.Current()
 	if err != nil {
 		return nil, fmt.Errorf("error getting user home: %w", err)

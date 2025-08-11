@@ -76,7 +76,7 @@ func TestAppendCommand(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpFile, err := os.CreateTemp("", "testfile_*.json")
+			tmpFile, err := os.CreateTemp("", "testsqldb_*.db")
 			if err != nil {
 				t.Fatalf("Cant create temp file: %v", err)
 			}
@@ -91,21 +91,24 @@ func TestAppendCommand(t *testing.T) {
 				}
 			}(tmpFile.Name())
 
-			config.Config.UserConfigPath = tmpFile.Name()
-
-			err = SetUserConfig(tc.initialConfig)
+			config.Config.DatabasePath = tmpFile.Name()
+			db, err := CreateDB()
+			if err != nil {
+				t.Fatalf("Cant create db: %v", err)
+			}
+			err = db.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			err = AppendCommand(tc.commandToAdd)
+			err = db.AppendCommand(tc.commandToAdd)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			resultConfig, err := GetUserConfig()
+			resultConfig, err := db.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Cant get result config: %v", err)
 			}

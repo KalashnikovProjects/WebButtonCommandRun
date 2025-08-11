@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/json_storage"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/usecases"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2/log"
@@ -16,9 +15,9 @@ import (
 )
 
 type inputMessageStruct struct {
-	MessageType string                  `json:"message-type"`
-	Data        string                  `json:"data"`
-	Options     entities.CommandOptions `json:"options"`
+	MessageType string                   `json:"message-type"`
+	Data        string                   `json:"data"`
+	Options     entities.TerminalOptions `json:"options"`
 }
 
 type outMessageStruct struct {
@@ -26,7 +25,7 @@ type outMessageStruct struct {
 	Data        string `json:"data"`
 }
 
-func RunCommandWebsocket(c *websocket.Conn) {
+func (a App) RunCommandWebsocket(c *websocket.Conn) {
 	defer c.Close()
 	var (
 		mt  int
@@ -41,7 +40,7 @@ func RunCommandWebsocket(c *websocket.Conn) {
 		}
 		return
 	}
-	commandData, err := json_storage.GetCommand(uint(commandId))
+	commandData, err := a.DB.GetCommand(uint(commandId))
 	if err != nil {
 		data := websocket.FormatCloseMessage(1003, "command not found")
 		if err = c.WriteMessage(websocket.CloseMessage, data); err != nil {

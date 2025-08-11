@@ -15,7 +15,7 @@ type Command struct {
 }
 
 // RunCommand return input chan, output chan and error
-func RunCommand(ctx context.Context, commandText string, options entities.CommandOptions) (Command, error) {
+func RunCommand(ctx context.Context, commandText string, options entities.TerminalOptions) (Command, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	processingCommand, err := command_runner.RunCommand(commandText, options)
 	if err != nil {
