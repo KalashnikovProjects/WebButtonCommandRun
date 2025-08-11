@@ -14,13 +14,13 @@ type EmbeddedFile struct {
 }
 
 type UserConfig struct {
-	UsingConsole string    `json:"using-console"`
-	Commands     []Command `json:"commands"`
+	UsingConsole string         `json:"using-console"`
+	Commands     []Command      `json:"commands"`
+	Files        []EmbeddedFile `json:"files"`
 }
 
 type Command struct {
-	ID      uint           `json:"id"`
-	Name    string         `json:"name"`
-	Command string         `json:"command"`
-	Files   []EmbeddedFile `json:"files"`
+	ID      uint   `json:"id"`
+	Name    string `json:"name"`
+	Command string `json:"command"`
 }
