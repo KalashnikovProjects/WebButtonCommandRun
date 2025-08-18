@@ -4,10 +4,9 @@ go 1.24.4
 
 require (
 	github.com/acarl005/stripansi v0.0.0-20180116102854-5a71ef0e047d
-	github.com/aglyzov/go-patch v0.0.0-20181012082005-108ca2ba9cdf
 	github.com/creack/pty v1.1.24
 	github.com/gofiber/contrib/websocket v1.3.4
-	github.com/gofiber/fiber/v2 v2.52.8
+	github.com/gofiber/fiber/v2 v2.52.9
 	github.com/iamacarpet/go-winpty v1.0.4
 	github.com/joho/godotenv v1.5.1
 	gorm.io/driver/sqlite v1.6.0
@@ -17,7 +16,6 @@ require (
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
 	github.com/fasthttp/websocket v1.5.8 // indirect
-	github.com/fatih/structs v1.1.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect

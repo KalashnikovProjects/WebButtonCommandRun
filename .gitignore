@@ -4,5 +4,6 @@
 binaries/
 *.log
 test.txt
-data/commands-config.json
+data
 coverage.out
+wbcr.exe

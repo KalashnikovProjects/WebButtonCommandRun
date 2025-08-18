@@ -3,10 +3,9 @@
 <head>
     <link href="../static/css/base.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm/css/xterm.css"/>
-    <script src="../static/js/base.js" crossorigin="anonymous" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm/lib/xterm.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit/lib/xterm-addon-fit.min.js" defer></script>
-
+    <script src="../static/js/base.js" defer></script>
     <script src="../static/js/terminal.js" defer></script>
 
     <title>Command Run</title>
@@ -26,7 +25,7 @@
                 <button id="close-button" class="normal-button red-button">Close</button>
                 <button id="restart-button" class="normal-button">Restart</button>
 
-                <p id="command-up-terminal" class="command-text command-name" onWheel="smoothHorizontalScroll(event)">
+                <p id="command-up-terminal" class="command-text command-name">
                     command name here
                 </p>
             </div>
@@ -39,7 +38,7 @@
                 <button class="round-button" style="width: 50%">
                     <img width="100%" src="../static/vectors/plus.svg" alt="Add new command"/>
                 </button>
-                <p class="command-text command-name" onWheel="smoothHorizontalScroll(event)">
+                <p class="command-text command-name">
                     Add new
                 </p>
             </li>
@@ -53,14 +52,19 @@
 </div>
 <div id="right-menu" class="right-menu hidden">
     <button id="save-config-button" class="normal-button">
-        Save config to json
+        Save commands to json
     </button>
     <button id="import-config-button" class="normal-button">
-        Import config
+        Import commands
     </button>
-<!--    <button id="save-settings-button" class="normal-button">-->
-<!--        Save settings-->
-<!--    </button>-->
+    (without files)
+
+    <button id="export-files-button" class="normal-button" style="margin-top: 75px">
+        Export files
+    </button>
+    <button id="import-files-button" class="normal-button">
+        Import files
+    </button>
 </div>
 </body>
 </html>

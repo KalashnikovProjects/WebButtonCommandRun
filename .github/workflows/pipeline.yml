@@ -129,7 +129,6 @@ jobs:
           mkdir -p release-package-$name
           cp binaries/$binary release-package-$name/
         
-          cp -r data release-package-$name/
           cp -r web release-package-$name/
           
           # Create archive, add pty folder in windows

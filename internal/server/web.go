@@ -1,9 +1,10 @@
 package server
 
 import (
+	"path/filepath"
+
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/gofiber/fiber/v2"
-	"path/filepath"
 )
 
 func (a App) GetIndex(c *fiber.Ctx) error {
