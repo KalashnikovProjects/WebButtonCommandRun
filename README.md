@@ -7,7 +7,7 @@
 
 ### This project runs commands when you press a button. 😱
 For terminal emulation on the frontend using [xterm.js](https://github.com/xtermjs/xterm.js), on the backend using pty
-(Windows - [go-winpty](https://github.com/iamacarpet/go-winpty), Unix - [creack/pty](https://github.com/creack/pty)). Data is transferred via websocket. Go framework - [fiber](https://github.com/gofiber/fiber).
+(Windows - [go-winpty](https://github.com/iamacarpet/go-winpty), Unix - [creack/pty](https://github.com/creack/pty)). Data is transferred via websocket. Go framework - [fiber](https://github.com/gofiber/fiber). The database is sqlite, used via GORM.
 
 ## Launch
 
@@ -55,11 +55,6 @@ make test-coverage
 make lint  # golangci-lint run
 ```
 
-
-## TODO:
-* server mode with passwords and config edit locking
-* the ability to upload .sh or .cmd files instead of commands (to complement the command structure):
-```go
-UseFile  bool   `json:"use-file"`
-FileText string `json:"file-text"`
-```
+### Planned to do
+* Server mode with passwords and config freeze. It is even possible to implement an access rights system.
+* Webview
