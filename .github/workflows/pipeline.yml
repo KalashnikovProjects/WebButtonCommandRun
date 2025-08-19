@@ -90,92 +90,81 @@ jobs:
   build-all:
     name: Build Multi-Architecture
     runs-on: ubuntu-latest
-    needs: [test, security]
+    needs: [ test, security ]
     permissions:
       contents: read
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install cross-compilers for Windows and Linux ARM/ARM64
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends \
-          gcc-mingw-w64-x86-64 \
-          gcc-mingw-w64-i686 \
-          gcc-arm-linux-gnueabihf \
-          gcc-aarch64-linux-gnu \
-          libc6-dev-armhf-cross
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: ${{ env.GO_VERSION }}
 
-    - name: Install macOS cross-toolchain dependencies
-      run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            clang \
-            libssl-dev \
-            libxml2-dev \
-            libz-dev \
-            libsqlite3-dev \
-            libcurl4-openssl-dev
+      - name: Install zig (for CGO cross-compilation)
+        uses: mlugg/setup-zig@v2
+        with:
+          version: "0.12.0"
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: ${{ env.GO_VERSION }}
+      - name: Download dependencies
+        run: go mod download
 
-    - name: Download dependencies
-      run: go mod download
+      - name: Build all architectures using Makefile + zig
+        run: |
+          # Указываем CC для всех целевых платформ через zig
+          export CC_LINUX_AMD64="zig cc -target x86_64-linux-gnu"
+          export CC_LINUX_386="zig cc -target i386-linux-gnu"
+          export CC_LINUX_ARM="zig cc -target arm-linux-gnueabihf"
+          export CC_LINUX_ARM64="zig cc -target aarch64-linux-gnu"
+          export CC_WINDOWS_AMD64="zig cc -target x86_64-windows-gnu"
+          export CC_WINDOWS_386="zig cc -target i386-windows-gnu"
+          make build-all
 
-    - name: Build all architectures using Makefile
-      run: make build-all
-
-    - name: Create multi-arch packages
-      run: |
-        pairs=(
-          "wbcr.exe:wbcr-windows.zip"
-          "wbcr32.exe:wbcr-windows32.zip"
-          "wbcr-linux:wbcr-linux.tar.gz"
-          "wbcr-linux32:wbcr-linux32.tar.gz"
-          "wbcr-linux-arm:wbcr-linux-arm.tar.gz"
-          "wbcr-macos:wbcr-macos.tar.gz"
-          "wbcr-macos-arm:wbcr-macos-arm.tar.gz"
-        )
-        
-        for pair in "${pairs[@]}"; do
-          binary="${pair%%:*}"
-          name="${pair#*:}"
-          echo $binary
-          echo $name
-          mkdir -p release-package-$name
-          cp binaries/$binary release-package-$name/
-        
-          cp -r web release-package-$name/
+      - name: Create multi-arch packages
+        run: |
+          pairs=(
+            "wbcr.exe:wbcr-windows.zip"
+            "wbcr32.exe:wbcr-windows32.zip"
+            "wbcr-linux:wbcr-linux.tar.gz"
+            "wbcr-linux32:wbcr-linux32.tar.gz"
+            "wbcr-linux-arm:wbcr-linux-arm.tar.gz"
+            "wbcr-linux-arm64:wbcr-linux-arm64.tar.gz"
+            "wbcr-macos:wbcr-macos.tar.gz"
+            "wbcr-macos-arm:wbcr-macos-arm.tar.gz"
+          )
           
-          # Create archive, add pty folder in windows
-          if [[ $binary == *.exe ]]; then
-            cp -r pty release-package-$name/
-            cd "release-package-$name" 
-            zip -r "$name" .
-            cd ..
-            mv release-package-$name/$name $name
-          else
-            tar -czf $name -C release-package-$name .
-          fi
-        done
+          for pair in "${pairs[@]}"; do
+            binary="${pair%%:*}"
+            name="${pair#*:}"
+            mkdir -p release-package-$name
+            cp binaries/$binary release-package-$name/
+            cp -r web release-package-$name/ || true
+            if [[ $binary == *.exe ]]; then
+              cp -r pty release-package-$name/ || true
+              cd "release-package-$name"
+              zip -r "$name" .
+              cd ..
+              mv release-package-$name/$name $name
+            else
+              tar -czf $name -C release-package-$name .
+            fi
+          done
 
-    - name: Upload multi-arch artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: builds
-        path: |
-          wbcr-windows.zip
-          wbcr-windows32.zip
-          wbcr-linux.tar.gz
-          wbcr-linux-arm.tar.gz
-          wbcr-linux32.tar.gz
-          wbcr-macos.tar.gz
-          wbcr-macos-arm.tar.gz
+      - name: Upload multi-arch artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: builds
+          path: |
+            wbcr-windows.zip
+            wbcr-windows32.zip
+            wbcr-linux.tar.gz
+            wbcr-linux-arm.tar.gz
+            wbcr-linux-arm64.tar.gz
+            wbcr-linux32.tar.gz
+            wbcr-macos.tar.gz
+            wbcr-macos-arm.tar.gz
 
   release:
     name: Release
