@@ -1114,6 +1114,17 @@ function cleanupFileHandlers() {
     }
 }
 
+function escapeHTML(str) {
+    if (typeof str !== 'string') return str;
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/`/g, '&#96;');
+}
+
 function showErrorPopup(title, message, details = null) {
     const existingErrorPopup = document.getElementById('error-popup');
     if (existingErrorPopup) {
@@ -1122,15 +1133,18 @@ function showErrorPopup(title, message, details = null) {
     
     const popup = document.createElement('div');
     popup.id = 'error-popup';
+    const safeTitle = escapeHTML(title);
+    const safeMessage = escapeHTML(message);
+    const safeDetails = details !== null ? escapeHTML(details) : null;
     popup.innerHTML = `
         <div class="popup-backdrop"></div>
         <div class="popup-content error-popup">
-            <h2 class="error-title">${title}</h2>
+            <h2 class="error-title">${safeTitle}</h2>
             <div class="error-message">
-                <p>${message}</p>
-                ${details ? `<details class="error-details">
+                <p>${safeMessage}</p>
+                ${safeDetails ? `<details class="error-details">
                     <summary>Подробности</summary>
-                    <pre>${details}</pre>
+                    <pre>${safeDetails}</pre>
                 </details>` : ''}
             </div>
             <div class="popup-buttons">
