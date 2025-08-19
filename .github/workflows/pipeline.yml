@@ -98,6 +98,26 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Install cross-compilers for Windows and Linux ARM/ARM64
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends \
+          gcc-mingw-w64-x86-64 \
+          gcc-mingw-w64-i686 \
+          gcc-arm-linux-gnueabihf \
+          gcc-aarch64-linux-gnu
+
+    - name: Install macOS cross-toolchain dependencies
+      run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            clang \
+            libssl-dev \
+            libxml2-dev \
+            libz-dev \
+            libsqlite3-dev \
+            libcurl4-openssl-dev
+
     - name: Set up Go
       uses: actions/setup-go@v4
       with:
@@ -129,7 +149,6 @@ jobs:
           mkdir -p release-package-$name
           cp binaries/$binary release-package-$name/
         
-          cp -r data release-package-$name/
           cp -r web release-package-$name/
           
           # Create archive, add pty folder in windows

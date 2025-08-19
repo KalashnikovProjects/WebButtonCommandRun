@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/joho/godotenv"
 	"os"
+	"os/user"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -20,8 +21,10 @@ type StructOfConfig struct {
 	RootDir                string
 	LogLevel               log.Level
 	Console                string // sh or cmd
-	UserConfigPath         string
+	DataFolderPath         string
+	MaxFileSize            int64 // in bytes, for no restrict <=0
 	WebsocketWriteInterval time.Duration
+	DefaultCommandRunDir   string
 }
 
 var Config *StructOfConfig
@@ -31,6 +34,15 @@ func DetectDefaultConsole() string {
 		return "cmd"
 	}
 	return "sh"
+}
+
+func GetHomeDir() string {
+	usr, err := user.Current()
+	if err != nil {
+		log.Error("cant get current user", err)
+		return ""
+	}
+	return usr.HomeDir
 }
 
 func InitConfigs(rootDir string) error {
@@ -49,7 +61,7 @@ func InitConfigs(rootDir string) error {
 	}
 
 	Config.RootDir = rootDir
-	Config.UserConfigPath = filepath.Join(Config.RootDir, "data/commands-config.json")
+	Config.DataFolderPath = filepath.Join(Config.RootDir, "data")
 
 	if portFlag == -1 {
 		port, ok := os.LookupEnv("PORT")
@@ -65,7 +77,9 @@ func InitConfigs(rootDir string) error {
 		Config.PORT = portFlag
 	}
 	Config.LogLevel = log.Level(map[string]int{"trace": 0, "debug": 1, "info": 2, "warn": 3, "error": 4, "fatal": 5, "panic": 6}[os.Getenv("LogLevel")])
+	Config.MaxFileSize = -1
 	Config.WebsocketWriteInterval = time.Millisecond * 50
+	Config.DefaultCommandRunDir = GetHomeDir()
 	log.SetLevel(Config.LogLevel)
 	console, ok := os.LookupEnv("CONSOLE")
 	if ok {

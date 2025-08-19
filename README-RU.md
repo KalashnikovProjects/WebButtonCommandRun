@@ -6,7 +6,7 @@
 
 ### Данный проект запускает команды по нажатию кнопки. 😱
 Для эмулирования терминала на frontend'е используется библиотека [xterm.js](https://github.com/xtermjs/xterm.js), на backend используется pty 
-(на Windows - [go-winpty](https://github.com/iamacarpet/go-winpty), на Unix - [creack/pty](https://github.com/iamacarpet/go-winpty)). Данные передаются по websocket. Go фреймворк - [fiber](https://github.com/gofiber/fiber). 
+(на Windows - [go-winpty](https://github.com/iamacarpet/go-winpty), на Unix - [creack/pty](https://github.com/iamacarpet/go-winpty)). Данные передаются по websocket. Go фреймворк - [fiber](https://github.com/gofiber/fiber). База данных - sqlite, используемая через GORM. 
 
 ## Запуск
 
@@ -55,10 +55,5 @@ make lint  # golangci-lint run
 ```
 
 
-## TODO:
-* server mode с паролями и заморозкой конфигов
-* возможность заливать .sh или .cmd файлы вместо команды (дополнить структуру команды):
-```go
-UseFile  bool   `json:"use-file"`
-FileText string `json:"file-text"`
-```
+### Планировалось сделать 
+Server mode с паролями и заморозкой конфигов. Возможно даже реализовать систему прав доступа.

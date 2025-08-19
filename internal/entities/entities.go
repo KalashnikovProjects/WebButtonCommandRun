@@ -1,18 +1,49 @@
 package entities
 
-type CommandOptions struct {
+import "github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
+
+type TerminalOptions struct {
 	Cols uint16   `json:"cols"`
 	Rows uint16   `json:"rows"`
 	Env  []string `json:"-"`
+	Dir  string   `json:"-"`
+}
+
+type EmbeddedFile struct {
+	ID        uint   `json:"id" gorm:"primaryKey"`
+	CommandID uint   `json:"command-id" gorm:"index;->;<-:create"`
+	Name      string `json:"name"`
 }
 
 type UserConfig struct {
-	UsingConsole string    `json:"using-console"`
+	UsingConsole string    `json:"usingConsole"`
 	Commands     []Command `json:"commands"`
 }
 
-// Command ID - index of element in UserConfig.Commands
 type Command struct {
+	ID      uint   `json:"id" gorm:"->;<-:create;primaryKey"`
 	Name    string `json:"name"`
 	Command string `json:"command"`
+	Dir     string `json:"executionDir"`
+}
+
+type EmbeddedFileWithCommandInfo struct {
+	EmbeddedFile
+	Command Command `json:"command" gorm:"foreignKey:CommandID;references:ID;belongsTo:Command"`
+}
+
+func CommandDefaults() Command {
+	return Command{
+		Dir: config.Config.DefaultCommandRunDir,
+	}
+}
+
+func EmbeddedFileDefaults() EmbeddedFile {
+	return EmbeddedFile{}
+}
+
+func UserConfigDefaults() UserConfig {
+	return UserConfig{
+		UsingConsole: config.Config.Console,
+	}
 }

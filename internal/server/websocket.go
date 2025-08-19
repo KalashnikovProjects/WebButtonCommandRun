@@ -3,11 +3,11 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/json_storage"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/usecases"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/usecases/console"
 	"github.com/gofiber/contrib/websocket"
 	"github.com/gofiber/fiber/v2/log"
 	"strconv"
@@ -16,9 +16,9 @@ import (
 )
 
 type inputMessageStruct struct {
-	MessageType string                  `json:"message-type"`
-	Data        string                  `json:"data"`
-	Options     entities.CommandOptions `json:"options"`
+	MessageType string                   `json:"message-type"`
+	Data        string                   `json:"data"`
+	Options     entities.TerminalOptions `json:"options"`
 }
 
 type outMessageStruct struct {
@@ -26,33 +26,18 @@ type outMessageStruct struct {
 	Data        string `json:"data"`
 }
 
-func RunCommandWebsocket(c *websocket.Conn) {
+func (a App) RunCommandWebsocket(c *websocket.Conn) {
 	defer c.Close()
 	var (
 		mt  int
 		msg []byte
 		err error
 	)
-	commandId, err := strconv.Atoi(c.Params("id"))
+	commandId, err := strconv.Atoi(c.Params("command_id"))
 	if err != nil || commandId < 0 {
 		data := websocket.FormatCloseMessage(1003, "bad command id")
 		if err = c.WriteMessage(websocket.CloseMessage, data); err != nil {
 			log.Warn("Error writing close message", err)
-		}
-		return
-	}
-	commandData, err := json_storage.GetCommand(uint(commandId))
-	if err != nil {
-		data := websocket.FormatCloseMessage(1003, "command not found")
-		if err = c.WriteMessage(websocket.CloseMessage, data); err != nil {
-			log.Warn("Error writing close message", err)
-		}
-		return
-	}
-	if commandData.Command == "" {
-		data := websocket.FormatCloseMessage(1002, "empty command")
-		if err = c.WriteMessage(websocket.CloseMessage, data); err != nil {
-			log.Warn("Error writing close message: ", err)
 		}
 		return
 	}
@@ -88,9 +73,15 @@ func RunCommandWebsocket(c *websocket.Conn) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	log.Info("Starting command:", commandData.Command)
-	runningCommand, err := usecases.RunCommand(ctx, commandData.Command, inputData.Options)
+	runningCommand, err := console.RunCommand(ctx, a.DB, uint(commandId), inputData.Options)
 	if err != nil {
+		if errors.Is(err, console.ErrEmptyCommand) {
+			data := websocket.FormatCloseMessage(1002, "empty command")
+			if err = c.WriteMessage(websocket.CloseMessage, data); err != nil {
+				log.Warn("Error writing close message: ", err)
+			}
+			return
+		}
 		log.Warn("Error while stating command: ", err)
 		data := websocket.FormatCloseMessage(1011, "unexpected error while stating command")
 		if err = c.WriteMessage(websocket.CloseMessage, data); err != nil {

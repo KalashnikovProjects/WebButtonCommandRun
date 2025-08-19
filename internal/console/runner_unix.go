@@ -1,6 +1,6 @@
 //go:build !windows
 
-package command_runner
+package console
 
 import (
 	"fmt"
@@ -11,7 +11,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"os/user"
 )
 
 type unixCommand struct {
@@ -19,16 +18,10 @@ type unixCommand struct {
 	pty *os.File
 }
 
-func RunCommand(command string, options entities.CommandOptions) (Command, error) {
-	usr, err := user.Current()
-	if err != nil {
-		return nil, fmt.Errorf("error getting user home: %w", err)
-	}
-	homeDir := usr.HomeDir
-
+func RunCommand(command string, options entities.TerminalOptions) (Command, error) {
 	cmd := exec.Command(config.Config.Console, "-c", command)
-	cmd.Dir = homeDir
-	cmd.Env = append(options.Env, "HOME="+homeDir, "PWD="+homeDir)
+	cmd.Dir = options.Dir
+	cmd.Env = append(options.Env, "PWD="+options.Dir)
 
 	commandPty, err := pty.Start(cmd)
 	if err != nil {

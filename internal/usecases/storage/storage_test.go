@@ -1,15 +1,16 @@
-package usecases
+package storage
 
 import (
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
-	"os"
 	"reflect"
 	"testing"
+
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/testutils"
 )
 
 func TestAppendCommand(t *testing.T) {
-	err := config.InitConfigs("../..")
+	err := config.InitConfigs("../../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -32,9 +33,10 @@ func TestAppendCommand(t *testing.T) {
 				Command: "echo hello",
 			},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{
+						ID:      1,
 						Name:    "Test Command",
 						Command: "echo hello",
 					},
@@ -58,13 +60,15 @@ func TestAppendCommand(t *testing.T) {
 				Command: "echo new",
 			},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{
+						ID:      1,
 						Name:    "Existing Command",
 						Command: "echo existing",
 					},
 					{
+						ID:      2,
 						Name:    "New Command",
 						Command: "echo new",
 					},
@@ -76,43 +80,45 @@ func TestAppendCommand(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpFile, err := os.CreateTemp("", "testfile_*.json")
+			var db DB
+			dbNeedToClose := false
+			tempDir, cleanup := testutils.CreateTempDataFolder(t)
+			defer cleanup()
+
+			config.Config.DataFolderPath = tempDir
+			db, err := CreateDB()
 			if err != nil {
-				t.Fatalf("Cant create temp file: %v", err)
+				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(name string) {
-				err := tmpFile.Close()
-				if err != nil {
-					t.Errorf("Cant close temp file: %v", err)
+			dbNeedToClose = true
+			defer func() {
+				if dbNeedToClose {
+					if err := db.Close(); err != nil {
+						t.Errorf("Cant close db: %v", err)
+					}
 				}
-				err = os.Remove(name)
-				if err != nil {
-					t.Errorf("Cant delete temp file: %v", err)
-				}
-			}(tmpFile.Name())
+			}()
 
-			config.Config.UserConfigPath = tmpFile.Name()
-
-			err = SetUserConfig(tc.initialConfig)
+			err = db.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			err = AppendCommand(tc.commandToAdd)
+			err = db.AppendCommand(tc.commandToAdd)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			resultConfig, err := GetUserConfig()
+			resultConfig, err := db.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Cant get result config: %v", err)
 			}
 
 			if !tc.expectError {
 				if !reflect.DeepEqual(resultConfig, tc.expectedConfig) {
-					t.Fatalf("Expected config: %v, got: %v", tc.expectedConfig, resultConfig)
+					t.Fatalf("Expected config: %q, got: %q", tc.expectedConfig, resultConfig)
 				}
 			}
 		})
@@ -120,7 +126,7 @@ func TestAppendCommand(t *testing.T) {
 }
 
 func TestDeleteCommand(t *testing.T) {
-	err := config.InitConfigs("../..")
+	err := config.InitConfigs("../../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -142,12 +148,12 @@ func TestDeleteCommand(t *testing.T) {
 					{Name: "Third", Command: "echo third"},
 				},
 			},
-			deleteId: 0,
+			deleteId: 1,
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "Second", Command: "echo second"},
-					{Name: "Third", Command: "echo third"},
+					{ID: 2, Name: "Second", Command: "echo second"},
+					{ID: 3, Name: "Third", Command: "echo third"},
 				},
 			},
 			expectError: false,
@@ -162,12 +168,12 @@ func TestDeleteCommand(t *testing.T) {
 					{Name: "Third", Command: "echo third"},
 				},
 			},
-			deleteId: 1,
+			deleteId: 2,
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "First", Command: "echo first"},
-					{Name: "Third", Command: "echo third"},
+					{ID: 1, Name: "First", Command: "echo first"},
+					{ID: 3, Name: "Third", Command: "echo third"},
 				},
 			},
 			expectError: false,
@@ -181,11 +187,11 @@ func TestDeleteCommand(t *testing.T) {
 					{Name: "Second", Command: "echo second"},
 				},
 			},
-			deleteId: 1,
+			deleteId: 2,
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "First", Command: "echo first"},
+					{ID: 1, Name: "First", Command: "echo first"},
 				},
 			},
 			expectError: false,
@@ -196,9 +202,9 @@ func TestDeleteCommand(t *testing.T) {
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
-			deleteId: 0,
+			deleteId: 1,
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands:     []entities.Command{},
 			},
 			expectError: true,
@@ -207,36 +213,38 @@ func TestDeleteCommand(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpFile, err := os.CreateTemp("", "testfile_*.json")
+			var db DB
+			dbNeedToClose := false
+			tempDir, cleanup := testutils.CreateTempDataFolder(t)
+			defer cleanup()
+
+			config.Config.DataFolderPath = tempDir
+			db, err := CreateDB()
 			if err != nil {
-				t.Fatalf("Cant create temp file: %v", err)
+				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(name string) {
-				err := tmpFile.Close()
-				if err != nil {
-					t.Errorf("Cant close temp file: %v", err)
+			dbNeedToClose = true
+			defer func() {
+				if dbNeedToClose {
+					if err := db.Close(); err != nil {
+						t.Errorf("Cant close db: %v", err)
+					}
 				}
-				err = os.Remove(name)
-				if err != nil {
-					t.Errorf("Cant delete temp file: %v", err)
-				}
-			}(tmpFile.Name())
+			}()
 
-			config.Config.UserConfigPath = tmpFile.Name()
-
-			err = SetUserConfig(tc.initialConfig)
+			err = db.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			err = DeleteCommand(tc.deleteId)
+			err = db.DeleteCommand(tc.deleteId)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			resultConfig, err := GetUserConfig()
+			resultConfig, err := db.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Cant get result config: %v", err)
 			}
@@ -250,7 +258,7 @@ func TestDeleteCommand(t *testing.T) {
 }
 
 func TestGetCommandsList(t *testing.T) {
-	err := config.InitConfigs("../..")
+	err := config.InitConfigs("../../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -278,36 +286,38 @@ func TestGetCommandsList(t *testing.T) {
 				},
 			},
 			expectedResult: []entities.Command{
-				{Name: "First", Command: "echo first"},
-				{Name: "Second", Command: "echo second"},
+				{ID: 1, Name: "First", Command: "echo first"},
+				{ID: 2, Name: "Second", Command: "echo second"},
 			},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpFile, err := os.CreateTemp("", "testfile_*.json")
+			var db DB
+			dbNeedToClose := false
+			tempDir, cleanup := testutils.CreateTempDataFolder(t)
+			defer cleanup()
+
+			config.Config.DataFolderPath = tempDir
+			db, err := CreateDB()
 			if err != nil {
-				t.Fatalf("Cant create temp file: %v", err)
+				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(name string) {
-				err := tmpFile.Close()
-				if err != nil {
-					t.Errorf("Cant close temp file: %v", err)
+			dbNeedToClose = true
+			defer func() {
+				if dbNeedToClose {
+					if err := db.Close(); err != nil {
+						t.Errorf("Cant close db: %v", err)
+					}
 				}
-				err = os.Remove(name)
-				if err != nil {
-					t.Errorf("Cant delete temp file: %v", err)
-				}
-			}(tmpFile.Name())
+			}()
 
-			config.Config.UserConfigPath = tmpFile.Name()
-
-			err = SetUserConfig(tc.initialConfig)
+			err = db.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
-			result, err := GetCommandsList()
+			result, err := db.GetCommandsList()
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
@@ -319,7 +329,7 @@ func TestGetCommandsList(t *testing.T) {
 }
 
 func TestGetCommand(t *testing.T) {
-	err := config.InitConfigs("../..")
+	err := config.InitConfigs("../../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -340,8 +350,8 @@ func TestGetCommand(t *testing.T) {
 					{Name: "Second", Command: "echo second"},
 				},
 			},
-			commandId:      0,
-			expectedResult: entities.Command{Name: "First", Command: "echo first"},
+			commandId:      1,
+			expectedResult: entities.Command{ID: 1, Name: "First", Command: "echo first"},
 			expectError:    false,
 		},
 		{
@@ -353,8 +363,8 @@ func TestGetCommand(t *testing.T) {
 					{Name: "Second", Command: "echo second"},
 				},
 			},
-			commandId:      1,
-			expectedResult: entities.Command{Name: "Second", Command: "echo second"},
+			commandId:      2,
+			expectedResult: entities.Command{ID: 2, Name: "Second", Command: "echo second"},
 			expectError:    false,
 		},
 		{
@@ -376,7 +386,7 @@ func TestGetCommand(t *testing.T) {
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
-			commandId:      0,
+			commandId:      1,
 			expectedResult: entities.Command{},
 			expectError:    true,
 		},
@@ -384,29 +394,31 @@ func TestGetCommand(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpFile, err := os.CreateTemp("", "testfile_*.json")
+			var db DB
+			dbNeedToClose := false
+			tempDir, cleanup := testutils.CreateTempDataFolder(t)
+			defer cleanup()
+
+			config.Config.DataFolderPath = tempDir
+			db, err := CreateDB()
 			if err != nil {
-				t.Fatalf("Cant create temp file: %v", err)
+				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(name string) {
-				err := tmpFile.Close()
-				if err != nil {
-					t.Errorf("Cant close temp file: %v", err)
+			dbNeedToClose = true
+			defer func() {
+				if dbNeedToClose {
+					if err := db.Close(); err != nil {
+						t.Errorf("Cant close db: %v", err)
+					}
 				}
-				err = os.Remove(name)
-				if err != nil {
-					t.Errorf("Cant delete temp file: %v", err)
-				}
-			}(tmpFile.Name())
+			}()
 
-			config.Config.UserConfigPath = tmpFile.Name()
-
-			err = SetUserConfig(tc.initialConfig)
+			err = db.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			result, err := GetCommand(tc.commandId)
+			result, err := db.GetCommand(tc.commandId)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
@@ -422,7 +434,7 @@ func TestGetCommand(t *testing.T) {
 }
 
 func TestPutCommand(t *testing.T) {
-	err := config.InitConfigs("../..")
+	err := config.InitConfigs("../../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -444,13 +456,13 @@ func TestPutCommand(t *testing.T) {
 					{Name: "Second", Command: "echo second"},
 				},
 			},
-			commandId:  0,
+			commandId:  1,
 			newCommand: entities.Command{Name: "Updated First", Command: "echo updated"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "Updated First", Command: "echo updated"},
-					{Name: "Second", Command: "echo second"},
+					{ID: 1, Name: "Updated First", Command: "echo updated"},
+					{ID: 2, Name: "Second", Command: "echo second"},
 				},
 			},
 			expectError: false,
@@ -464,13 +476,13 @@ func TestPutCommand(t *testing.T) {
 					{Name: "Second", Command: "echo second"},
 				},
 			},
-			commandId:  1,
+			commandId:  2,
 			newCommand: entities.Command{Name: "Updated Second", Command: "echo updated second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "First", Command: "echo first"},
-					{Name: "Updated Second", Command: "echo updated second"},
+					{ID: 1, Name: "First", Command: "echo first"},
+					{ID: 2, Name: "Updated Second", Command: "echo updated second"},
 				},
 			},
 			expectError: false,
@@ -487,10 +499,10 @@ func TestPutCommand(t *testing.T) {
 			commandId:  3,
 			newCommand: entities.Command{Name: "Updated Second", Command: "echo updated second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "First", Command: "echo first"},
-					{Name: "Updated Second", Command: "echo second"},
+					{ID: 1, Name: "First", Command: "echo first"},
+					{ID: 2, Name: "Second", Command: "echo second"},
 				},
 			},
 			expectError: true,
@@ -501,10 +513,10 @@ func TestPutCommand(t *testing.T) {
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
-			commandId:  0,
+			commandId:  1,
 			newCommand: entities.Command{Name: "New", Command: "echo new"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands:     []entities.Command{},
 			},
 			expectError: true,
@@ -513,36 +525,38 @@ func TestPutCommand(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpFile, err := os.CreateTemp("", "testfile_*.json")
+			var db DB
+			dbNeedToClose := false
+			tempDir, cleanup := testutils.CreateTempDataFolder(t)
+			defer cleanup()
+
+			config.Config.DataFolderPath = tempDir
+			db, err := CreateDB()
 			if err != nil {
-				t.Fatalf("Cant create temp file: %v", err)
+				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(name string) {
-				err := tmpFile.Close()
-				if err != nil {
-					t.Errorf("Cant close temp file: %v", err)
+			dbNeedToClose = true
+			defer func() {
+				if dbNeedToClose {
+					if err := db.Close(); err != nil {
+						t.Errorf("Cant close db: %v", err)
+					}
 				}
-				err = os.Remove(name)
-				if err != nil {
-					t.Errorf("Cant delete temp file: %v", err)
-				}
-			}(tmpFile.Name())
+			}()
 
-			config.Config.UserConfigPath = tmpFile.Name()
-
-			err = SetUserConfig(tc.initialConfig)
+			err = db.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			err = PutCommand(tc.commandId, tc.newCommand)
+			err = db.PutCommand(tc.commandId, tc.newCommand)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			resultConfig, err := GetUserConfig()
+			resultConfig, err := db.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Cant get result config: %v", err)
 			}
@@ -556,7 +570,7 @@ func TestPutCommand(t *testing.T) {
 }
 
 func TestPatchCommand(t *testing.T) {
-	err := config.InitConfigs("../..")
+	err := config.InitConfigs("../../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -578,13 +592,13 @@ func TestPatchCommand(t *testing.T) {
 					{Name: "Second", Command: "echo second"},
 				},
 			},
-			commandId:  0,
+			commandId:  1,
 			newCommand: entities.Command{Name: "Updated First", Command: "echo updated"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "Updated First", Command: "echo updated"},
-					{Name: "Second", Command: "echo second"},
+					{ID: 1, Name: "Updated First", Command: "echo updated"},
+					{ID: 2, Name: "Second", Command: "echo second"},
 				},
 			},
 			expectError: false,
@@ -598,13 +612,13 @@ func TestPatchCommand(t *testing.T) {
 					{Name: "Second", Command: "echo second"},
 				},
 			},
-			commandId:  1,
+			commandId:  2,
 			newCommand: entities.Command{Name: "Updated Second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "First", Command: "echo first"},
-					{Name: "Updated Second", Command: "echo second"},
+					{ID: 1, Name: "First", Command: "echo first"},
+					{ID: 2, Name: "Updated Second", Command: "echo second"},
 				},
 			},
 			expectError: false,
@@ -618,13 +632,13 @@ func TestPatchCommand(t *testing.T) {
 					{Name: "Second", Command: "echo second"},
 				},
 			},
-			commandId:  1,
+			commandId:  2,
 			newCommand: entities.Command{Command: "echo updated second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "First", Command: "echo first"},
-					{Name: "Second", Command: "echo updated second"},
+					{ID: 1, Name: "First", Command: "echo first"},
+					{ID: 2, Name: "Second", Command: "echo updated second"},
 				},
 			},
 			expectError: false,
@@ -641,10 +655,10 @@ func TestPatchCommand(t *testing.T) {
 			commandId:  3,
 			newCommand: entities.Command{Name: "Updated Second", Command: "echo updated second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "First", Command: "echo first"},
-					{Name: "Updated Second", Command: "echo second"},
+					{ID: 1, Name: "First", Command: "echo first"},
+					{ID: 2, Name: "Second", Command: "echo second"},
 				},
 			},
 			expectError: true,
@@ -655,10 +669,10 @@ func TestPatchCommand(t *testing.T) {
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
-			commandId:  0,
+			commandId:  1,
 			newCommand: entities.Command{Name: "New", Command: "echo new"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands:     []entities.Command{},
 			},
 			expectError: true,
@@ -672,16 +686,16 @@ func TestPatchCommand(t *testing.T) {
 					{Name: "Second", Command: "echo second"},
 				},
 			},
-			commandId:  1,
+			commandId:  2,
 			newCommand: entities.Command{},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "First", Command: "echo first"},
-					{Name: "Second", Command: "echo second"},
+					{ID: 1, Name: "First", Command: "echo first"},
+					{ID: 2, Name: "Second", Command: "echo second"},
 				},
 			},
-			expectError: false,
+			expectError: true,
 		},
 		{
 			name: "Equal data no changes",
@@ -692,13 +706,13 @@ func TestPatchCommand(t *testing.T) {
 					{Name: "Second", Command: "echo second"},
 				},
 			},
-			commandId:  1,
+			commandId:  2,
 			newCommand: entities.Command{Name: "Second", Command: "echo second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "First", Command: "echo first"},
-					{Name: "Second", Command: "echo second"},
+					{ID: 1, Name: "First", Command: "echo first"},
+					{ID: 2, Name: "Second", Command: "echo second"},
 				},
 			},
 			expectError: false,
@@ -707,36 +721,38 @@ func TestPatchCommand(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpFile, err := os.CreateTemp("", "testfile_*.json")
+			var db DB
+			dbNeedToClose := false
+			tempDir, cleanup := testutils.CreateTempDataFolder(t)
+			defer cleanup()
+
+			config.Config.DataFolderPath = tempDir
+			db, err := CreateDB()
 			if err != nil {
-				t.Fatalf("Cant create temp file: %v", err)
+				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(name string) {
-				err := tmpFile.Close()
-				if err != nil {
-					t.Errorf("Cant close temp file: %v", err)
+			dbNeedToClose = true
+			defer func() {
+				if dbNeedToClose {
+					if err := db.Close(); err != nil {
+						t.Errorf("Cant close db: %v", err)
+					}
 				}
-				err = os.Remove(name)
-				if err != nil {
-					t.Errorf("Cant delete temp file: %v", err)
-				}
-			}(tmpFile.Name())
+			}()
 
-			config.Config.UserConfigPath = tmpFile.Name()
-
-			err = SetUserConfig(tc.initialConfig)
+			err = db.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			err = PatchCommand(tc.commandId, tc.newCommand)
+			err = db.PatchCommand(tc.commandId, tc.newCommand)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			resultConfig, err := GetUserConfig()
+			resultConfig, err := db.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Cant get result config: %v", err)
 			}
@@ -750,7 +766,7 @@ func TestPatchCommand(t *testing.T) {
 }
 
 func TestGetUserConfig(t *testing.T) {
-	err := config.InitConfigs("../..")
+	err := config.InitConfigs("../../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -767,7 +783,7 @@ func TestGetUserConfig(t *testing.T) {
 				Commands:     []entities.Command{},
 			},
 			expectedResult: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands:     []entities.Command{},
 			},
 		},
@@ -781,10 +797,10 @@ func TestGetUserConfig(t *testing.T) {
 				},
 			},
 			expectedResult: entities.UserConfig{
-				UsingConsole: "test",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "First", Command: "echo first"},
-					{Name: "Second", Command: "echo second"},
+					{ID: 1, Name: "First", Command: "echo first"},
+					{ID: 2, Name: "Second", Command: "echo second"},
 				},
 			},
 		},
@@ -792,29 +808,31 @@ func TestGetUserConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpFile, err := os.CreateTemp("", "testfile_*.json")
+			var db DB
+			dbNeedToClose := false
+			tempDir, cleanup := testutils.CreateTempDataFolder(t)
+			defer cleanup()
+
+			config.Config.DataFolderPath = tempDir
+			db, err := CreateDB()
 			if err != nil {
-				t.Fatalf("Cant create temp file: %v", err)
+				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(name string) {
-				err := tmpFile.Close()
-				if err != nil {
-					t.Errorf("Cant close temp file: %v", err)
+			dbNeedToClose = true
+			defer func() {
+				if dbNeedToClose {
+					if err := db.Close(); err != nil {
+						t.Errorf("Cant close db: %v", err)
+					}
 				}
-				err = os.Remove(name)
-				if err != nil {
-					t.Errorf("Cant delete temp file: %v", err)
-				}
-			}(tmpFile.Name())
+			}()
 
-			config.Config.UserConfigPath = tmpFile.Name()
-
-			err = SetUserConfig(tc.initialConfig)
+			err = db.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			result, err := GetUserConfig()
+			result, err := db.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
@@ -826,7 +844,7 @@ func TestGetUserConfig(t *testing.T) {
 }
 
 func TestUpdateUserConfig(t *testing.T) {
-	err := config.InitConfigs("../..")
+	err := config.InitConfigs("../../..")
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
@@ -854,10 +872,10 @@ func TestUpdateUserConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "new",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
-					{Name: "New1", Command: "echo new1"},
-					{Name: "New2", Command: "echo new2"},
+					{ID: 2, Name: "New1", Command: "echo new1"},
+					{ID: 3, Name: "New2", Command: "echo new2"},
 				},
 			},
 			expectError: false,
@@ -875,7 +893,7 @@ func TestUpdateUserConfig(t *testing.T) {
 				Commands:     []entities.Command{},
 			},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "new",
+				UsingConsole: config.Config.Console,
 				Commands:     []entities.Command{},
 			},
 			expectError: false,
@@ -884,36 +902,38 @@ func TestUpdateUserConfig(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			tmpFile, err := os.CreateTemp("", "testfile_*.json")
+			var db DB
+			dbNeedToClose := false
+			tempDir, cleanup := testutils.CreateTempDataFolder(t)
+			defer cleanup()
+
+			config.Config.DataFolderPath = tempDir
+			db, err := CreateDB()
 			if err != nil {
-				t.Fatalf("Cant create temp file: %v", err)
+				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(name string) {
-				err := tmpFile.Close()
-				if err != nil {
-					t.Errorf("Cant close temp file: %v", err)
+			dbNeedToClose = true
+			defer func() {
+				if dbNeedToClose {
+					if err := db.Close(); err != nil {
+						t.Errorf("Cant close db: %v", err)
+					}
 				}
-				err = os.Remove(name)
-				if err != nil {
-					t.Errorf("Cant delete temp file: %v", err)
-				}
-			}(tmpFile.Name())
+			}()
 
-			config.Config.UserConfigPath = tmpFile.Name()
-
-			err = SetUserConfig(tc.initialConfig)
+			err = db.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			err = SetUserConfig(tc.newConfig)
+			err = db.SetUserConfig(tc.newConfig)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			resultConfig, err := GetUserConfig()
+			resultConfig, err := db.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Cant get result config: %v", err)
 			}
