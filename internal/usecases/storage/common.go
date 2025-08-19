@@ -50,7 +50,8 @@ func checkName(name string) error {
 }
 
 func CreateDB() (DB, error) {
-	err := os.MkdirAll(config.Config.DefaultCommandRunDir, 0755)
+	err := os.MkdirAll(config.Config.DataFolderPath, 0750)
+
 	if err != nil {
 		return DB{}, err
 	}

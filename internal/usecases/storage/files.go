@@ -51,7 +51,7 @@ func validateFile(data FileData) error {
 
 func saveFile(fileId uint, file io.Reader) error {
 	filesDir := filepath.Join(config.Config.DataFolderPath, "files")
-	if err := os.MkdirAll(filesDir, 0755); err != nil {
+	if err := os.MkdirAll(filesDir, 0750); err != nil {
 		return fmt.Errorf("error creating dir: %w", err)
 	}
 
@@ -322,7 +322,7 @@ func (db DB) clearFiles() error {
 	if err != nil {
 		return err
 	}
-	err = os.MkdirAll(filepath.Join(config.Config.DataFolderPath, "files"), 0777)
+	err = os.MkdirAll(filepath.Join(config.Config.DataFolderPath, "files"), 0750)
 	if err != nil {
 		return err
 	}

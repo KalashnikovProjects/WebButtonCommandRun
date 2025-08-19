@@ -19,7 +19,7 @@ type DB struct {
 }
 
 func Connect() (DB, error) {
-	if err := os.MkdirAll(config.Config.DataFolderPath, 0755); err != nil {
+	if err := os.MkdirAll(config.Config.DataFolderPath, 0750); err != nil {
 		return DB{}, fmt.Errorf("error while creating data folder: %w", err)
 	}
 
