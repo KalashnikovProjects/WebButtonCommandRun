@@ -117,8 +117,12 @@ else
 endif
 	go clean
 
-lint:
+deps:
+	go mod download
+	go mod tidy
+
+lint: install-lint
 	golangci-lint run
 
-install-lint:
+install-lint: deps
 	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
