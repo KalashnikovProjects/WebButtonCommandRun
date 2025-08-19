@@ -105,7 +105,8 @@ jobs:
           gcc-mingw-w64-x86-64 \
           gcc-mingw-w64-i686 \
           gcc-arm-linux-gnueabihf \
-          gcc-aarch64-linux-gnu
+          gcc-aarch64-linux-gnu \
+          libc6-dev-armhf-cross
 
     - name: Install macOS cross-toolchain dependencies
       run: |
