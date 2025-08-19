@@ -100,7 +100,9 @@ func (a App) PutFile(c *fiber.Ctx) error {
 	}
 	var file entities.EmbeddedFile
 	err = c.BodyParser(&file)
-
+	if err != nil {
+		return err
+	}
 	err = a.DB.PutFile(uint(commandId), uint(fileId), file)
 	if errors.Is(err, storage.ErrNotFound) {
 		return fiber.ErrNotFound
@@ -124,7 +126,9 @@ func (a App) PatchFile(c *fiber.Ctx) error {
 	}
 	var file entities.EmbeddedFile
 	err = c.BodyParser(&file)
-
+	if err != nil {
+		return err
+	}
 	err = a.DB.PatchFile(uint(commandId), uint(fileId), file)
 	if errors.Is(err, storage.ErrNotFound) {
 		return fiber.ErrNotFound
@@ -225,5 +229,8 @@ func (a App) ImportFiles(c *fiber.Ctx) error {
 		return fiber.ErrInternalServerError
 	}
 	err = a.DB.ImportAllFilesFromArchive(bytes)
+	if err != nil {
+		return err
+	}
 	return nil
 }
