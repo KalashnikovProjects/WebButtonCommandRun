@@ -170,7 +170,7 @@ func TestDeleteCommand(t *testing.T) {
 			},
 			deleteId: 2,
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 3, Name: "Third", Command: "echo third"},
@@ -189,7 +189,7 @@ func TestDeleteCommand(t *testing.T) {
 			},
 			deleteId: 2,
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 				},
@@ -204,7 +204,7 @@ func TestDeleteCommand(t *testing.T) {
 			},
 			deleteId: 1,
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands:     []entities.Command{},
 			},
 			expectError: true,
@@ -459,7 +459,7 @@ func TestPutCommand(t *testing.T) {
 			commandId:  1,
 			newCommand: entities.Command{Name: "Updated First", Command: "echo updated"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "Updated First", Command: "echo updated"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -479,7 +479,7 @@ func TestPutCommand(t *testing.T) {
 			commandId:  2,
 			newCommand: entities.Command{Name: "Updated Second", Command: "echo updated second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Updated Second", Command: "echo updated second"},
@@ -499,7 +499,7 @@ func TestPutCommand(t *testing.T) {
 			commandId:  3,
 			newCommand: entities.Command{Name: "Updated Second", Command: "echo updated second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -516,7 +516,7 @@ func TestPutCommand(t *testing.T) {
 			commandId:  1,
 			newCommand: entities.Command{Name: "New", Command: "echo new"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands:     []entities.Command{},
 			},
 			expectError: true,
@@ -595,7 +595,7 @@ func TestPatchCommand(t *testing.T) {
 			commandId:  1,
 			newCommand: entities.Command{Name: "Updated First", Command: "echo updated"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "Updated First", Command: "echo updated"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -615,7 +615,7 @@ func TestPatchCommand(t *testing.T) {
 			commandId:  2,
 			newCommand: entities.Command{Name: "Updated Second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Updated Second", Command: "echo second"},
@@ -635,7 +635,7 @@ func TestPatchCommand(t *testing.T) {
 			commandId:  2,
 			newCommand: entities.Command{Command: "echo updated second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo updated second"},
@@ -655,7 +655,7 @@ func TestPatchCommand(t *testing.T) {
 			commandId:  3,
 			newCommand: entities.Command{Name: "Updated Second", Command: "echo updated second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -672,7 +672,7 @@ func TestPatchCommand(t *testing.T) {
 			commandId:  1,
 			newCommand: entities.Command{Name: "New", Command: "echo new"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands:     []entities.Command{},
 			},
 			expectError: true,
@@ -689,7 +689,7 @@ func TestPatchCommand(t *testing.T) {
 			commandId:  2,
 			newCommand: entities.Command{},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -709,7 +709,7 @@ func TestPatchCommand(t *testing.T) {
 			commandId:  2,
 			newCommand: entities.Command{Name: "Second", Command: "echo second"},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -783,7 +783,7 @@ func TestGetUserConfig(t *testing.T) {
 				Commands:     []entities.Command{},
 			},
 			expectedResult: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands:     []entities.Command{},
 			},
 		},
@@ -797,7 +797,7 @@ func TestGetUserConfig(t *testing.T) {
 				},
 			},
 			expectedResult: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -872,7 +872,7 @@ func TestUpdateUserConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands: []entities.Command{
 					{ID: 2, Name: "New1", Command: "echo new1"},
 					{ID: 3, Name: "New2", Command: "echo new2"},
@@ -893,7 +893,7 @@ func TestUpdateUserConfig(t *testing.T) {
 				Commands:     []entities.Command{},
 			},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: "cmd",
+				UsingConsole: config.Config.Console,
 				Commands:     []entities.Command{},
 			},
 			expectError: false,
