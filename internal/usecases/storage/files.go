@@ -176,6 +176,9 @@ func (db DB) DownloadFile(commandId, fileId uint) (entities.EmbeddedFile, []byte
 	}
 	filePath := filepath.Join(config.Config.DataFolderPath, "files", fmt.Sprintf("%d", fileId))
 	file, err := os.Open(filePath)
+	if err != nil {
+		return entities.EmbeddedFile{}, nil, err
+	}
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
