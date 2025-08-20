@@ -163,6 +163,9 @@ jobs:
 
   build-macos:
     runs-on: macos-latest
+    needs: [ test, security ]
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
@@ -196,13 +199,13 @@ jobs:
         with:
           name: builds-macos
           path: |
-            wbcr-macos.tar.gz
-            wbcr-macos-arm.tar.gz
+            wbcr-macos.zip
+            wbcr-macos-arm.zip
 
   release:
     name: Release
     runs-on: ubuntu-latest
-    needs: [build-all]
+    needs: [build-all, build-macos]
     permissions:
       contents: write
 
