@@ -226,7 +226,7 @@ jobs:
           builds/wbcr-linux32.tar.gz
           builds/wbcr-linux-arm.tar.gz
           builds/wbcr-linux-arm64.tar.gz
-          builds-macos/wbcr-macos.tar.gz
-          builds-macos/wbcr-macos-arm.tar.gz
+          builds-macos/wbcr-macos.zip
+          builds-macos/wbcr-macos-arm.zip
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
