@@ -4,6 +4,7 @@ import (
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/server"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/usecases/storage"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/webview"
 	"github.com/gofiber/fiber/v2/log"
 )
 
@@ -26,6 +27,14 @@ func main() {
 		DB: &db,
 	}
 	app := server.CreateApp(appData)
+	go func() {
+		webview.Run()
+		err := app.Shutdown()
+		if err != nil {
+			log.Errorw("Error while shutting down app", err)
+			return
+		}
+	}()
 	err = server.RunApp(app)
 	if err != nil {
 		log.Fatalw("Error while running server", err)
