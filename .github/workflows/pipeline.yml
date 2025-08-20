@@ -175,8 +175,8 @@ jobs:
       - name: Create macos multi-arch packages
         run: |
           pairs=(
-            "wbcr-macos:wbcr-macos.tar.gz"
-            "wbcr-macos-arm:wbcr-macos-arm.tar.gz"
+            "wbcr-macos:wbcr-macos.zip"
+            "wbcr-macos-arm:wbcr-macos-arm.zip"
           )
 
           for pair in "${pairs[@]}"; do
@@ -185,15 +185,10 @@ jobs:
             mkdir -p release-package-$name
             cp binaries/$binary release-package-$name/
             cp -r web release-package-$name/ || true
-            if [[ $binary == *.exe ]]; then
-              cp -r pty release-package-$name/ || true
-              cd "release-package-$name"
-              zip -r "$name" .
-              cd ..
-              mv release-package-$name/$name $name
-            else
-              tar -czf $name -C release-package-$name .
-            fi
+            cd "release-package-$name"
+            zip -r "$name" .
+            cd ..
+            mv release-package-$name/$name $name
           done
 
       - name: Upload multi-arch artifacts
