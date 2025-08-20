@@ -2,6 +2,7 @@ name: Quick Test
 
 on:
   push:
+  workflow_dispatch:
 
 jobs:
   test:

@@ -3,6 +3,7 @@ name: CI/CD Pipeline
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 env:
   GO_VERSION: '1.24'
