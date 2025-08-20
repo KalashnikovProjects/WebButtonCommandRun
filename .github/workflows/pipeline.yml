@@ -11,7 +11,7 @@ env:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: read
 
@@ -53,7 +53,7 @@ jobs:
 
   security:
     name: Security Scan
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       security-events: write
       actions: read
@@ -102,37 +102,37 @@ jobs:
         include:
           - os: linux
             arch: amd64
-            runner: ubuntu-latest
+            runner: ubuntu-22.04
             cc: "zig cc -target x86_64-linux-gnu"
             binary: wbcr-linux
             package: wbcr-linux.tar.gz
           - os: linux
             arch: 386
-            runner: ubuntu-latest
+            runner: ubuntu-22.04
             cc: "zig cc -target x86-linux-gnu"
             binary: wbcr-linux32
             package: wbcr-linux32.tar.gz
           - os: linux
             arch: arm
-            runner: ubuntu-latest
+            runner: ubuntu-22.04
             cc: "zig cc -target arm-linux-gnueabihf"
             binary: wbcr-linux-arm
             package: wbcr-linux-arm.tar.gz
           - os: linux
             arch: arm64
-            runner: ubuntu-latest
+            runner: ubuntu-22.04
             cc: "zig cc -target aarch64-linux-gnu"
             binary: wbcr-linux-arm64
             package: wbcr-linux-arm64.tar.gz
           - os: windows
             arch: amd64
-            runner: ubuntu-latest
+            runner: ubuntu-22.04
             cc: "zig cc -target x86_64-windows-gnu"
             binary: wbcr.exe
             package: wbcr-windows.zip
           - os: windows
             arch: 386
-            runner: ubuntu-latest
+            runner: ubuntu-22.04
             cc: "zig cc -target x86-windows-gnu"
             binary: wbcr32.exe
             package: wbcr-windows32.zip
@@ -208,7 +208,7 @@ jobs:
 
   release:
     name: Release
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [build-all]
     permissions:
       contents: write
