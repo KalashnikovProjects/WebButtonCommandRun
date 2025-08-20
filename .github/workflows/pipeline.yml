@@ -16,15 +16,15 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Set up Go $${{ env.GO_VERSION }}
-      uses: actions/setup-go@v4
+      uses: actions/setup-go@v5
       with:
         go-version: ${{ env.GO_VERSION }}
 
     - name: Cache Go modules
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: |
           ~/.cache/go-build
@@ -57,7 +57,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
@@ -96,10 +96,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
 
@@ -113,14 +113,13 @@ jobs:
 
       - name: Build all architectures using Makefile + zig
         run: |
-          # Указываем CC для всех целевых платформ через zig
-          export CC_LINUX_AMD64="zig cc -target x86_64-linux-gnu"
-          export CC_LINUX_386="zig cc -target i386-linux-gnu"
-          export CC_LINUX_ARM="zig cc -target arm-linux-gnueabihf"
-          export CC_LINUX_ARM64="zig cc -target aarch64-linux-gnu"
-          export CC_WINDOWS_AMD64="zig cc -target x86_64-windows-gnu"
-          export CC_WINDOWS_386="zig cc -target i386-windows-gnu"
-          make build-all
+          make CC_LINUX_AMD64="zig cc -target x86_64-linux-gnu" \
+                CC_LINUX_386="zig cc -target x86-linux-gnu" \
+                CC_LINUX_ARM="zig cc -target arm-linux-gnueabihf" \
+                CC_LINUX_ARM64="zig cc -target aarch64-linux-gnu" \
+                CC_WINDOWS_AMD64="zig cc -target x86_64-windows-gnu" \
+                CC_WINDOWS_386="zig cc -target x86-windows-gnu" \
+                build-windows build-windows32 build-linux build-linux32 build-linux-arm build-linux-arm64
 
       - name: Create multi-arch packages
         run: |
@@ -131,8 +130,6 @@ jobs:
             "wbcr-linux32:wbcr-linux32.tar.gz"
             "wbcr-linux-arm:wbcr-linux-arm.tar.gz"
             "wbcr-linux-arm64:wbcr-linux-arm64.tar.gz"
-            "wbcr-macos:wbcr-macos.tar.gz"
-            "wbcr-macos-arm:wbcr-macos-arm.tar.gz"
           )
           
           for pair in "${pairs[@]}"; do
@@ -163,6 +160,47 @@ jobs:
             wbcr-linux-arm.tar.gz
             wbcr-linux-arm64.tar.gz
             wbcr-linux32.tar.gz
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Build
+        run: |
+          make build-macos
+          make build-macos-arm
+      - name: Create macos multi-arch packages
+        run: |
+          pairs=(
+            "wbcr-macos:wbcr-macos.tar.gz"
+            "wbcr-macos-arm:wbcr-macos-arm.tar.gz"
+          )
+
+          for pair in "${pairs[@]}"; do
+            binary="${pair%%:*}"
+            name="${pair#*:}"
+            mkdir -p release-package-$name
+            cp binaries/$binary release-package-$name/
+            cp -r web release-package-$name/ || true
+            if [[ $binary == *.exe ]]; then
+              cp -r pty release-package-$name/ || true
+              cd "release-package-$name"
+              zip -r "$name" .
+              cd ..
+              mv release-package-$name/$name $name
+            else
+              tar -czf $name -C release-package-$name .
+            fi
+          done
+
+      - name: Upload multi-arch artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: builds-macos
+          path: |
             wbcr-macos.tar.gz
             wbcr-macos-arm.tar.gz
 
@@ -175,7 +213,7 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
 
     - name: Download all artifacts
       uses: actions/download-artifact@v4
@@ -187,9 +225,10 @@ jobs:
           builds/wbcr-windows.zip
           builds/wbcr-windows32.zip
           builds/wbcr-linux.tar.gz
-          builds/wbcr-linux-arm.tar.gz
           builds/wbcr-linux32.tar.gz
-          builds/wbcr-macos.tar.gz
-          builds/wbcr-macos-arm.tar.gz
+          builds/wbcr-linux-arm.tar.gz
+          builds/wbcr-linux-arm64.tar.gz
+          builds-macos/wbcr-macos.tar.gz
+          builds-macos/wbcr-macos-arm.tar.gz
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
