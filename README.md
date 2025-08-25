@@ -9,6 +9,7 @@
 For terminal emulation on the frontend using [xterm.js](https://github.com/xtermjs/xterm.js), on the backend using pty
 (Windows - [go-winpty](https://github.com/iamacarpet/go-winpty), Unix - [creack/pty](https://github.com/creack/pty)). Data is transferred via websocket. Go framework - [fiber](https://github.com/gofiber/fiber). The database is sqlite, used via GORM.
 
+The project is designed in Clean Architecture.
 ## Launch
 
 Download the appropriate archive from the [releases](https://github.com/KalashnikovProjects/WebButtonCommandRun/releases) tab or [build](#build) the project locally.
@@ -47,7 +48,7 @@ make BINARIES_PATH=. build-current
 
 ## Tests
 
-There are tests for [internal/json_storage](internal/json_storage/json_storage_test.go) and [internal/usecases](internal/usecases)
+There are tests for [internal/json_storage](internal/json_storage/json_storage_test.go) and [internal/usecases](internal/core)
 ```shell
 make test
 make test-race

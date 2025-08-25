@@ -1,7 +1,7 @@
 .idea
 .vscode
 .env
-binaries/
+binaries
 *.log
 test.txt
 data

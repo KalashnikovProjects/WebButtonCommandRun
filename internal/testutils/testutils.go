@@ -5,7 +5,6 @@ import (
 	"testing"
 )
 
-// CreateTempDataFolder создает временную папку для тестов
 func CreateTempDataFolder(t *testing.T) (string, func()) {
 	tempDir, err := os.MkdirTemp("", "testdata_*")
 	if err != nil {

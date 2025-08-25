@@ -6,8 +6,10 @@
 
 ### Данный проект запускает команды по нажатию кнопки. 😱
 Для эмулирования терминала на frontend'е используется библиотека [xterm.js](https://github.com/xtermjs/xterm.js), на backend используется pty 
-(на Windows - [go-winpty](https://github.com/iamacarpet/go-winpty), на Unix - [creack/pty](https://github.com/iamacarpet/go-winpty)). Данные передаются по websocket. Go фреймворк - [fiber](https://github.com/gofiber/fiber). База данных - sqlite, используемая через GORM. 
+(на Windows - [go-winpty](https://github.com/iamacarpet/go-winpty), на Unix - [creack/pty](https://github.com/iamacarpet/go-winpty)). Данные передаются по websocket. 
+Go фреймворк - [fiber](https://github.com/gofiber/fiber). База данных - sqlite, используемая через GORM. 
 
+Проект спроектирован в Clean Architecture.
 ## Запуск
 
 Скачайте нужный архив с вкладки [релизов](https://github.com/KalashnikovProjects/WebButtonCommandRun/releases) или [соберите](#build) проект сами.
@@ -46,7 +48,7 @@ make BINARIES_PATH=. build-current
 
 ## Запуск тестов
 
-Есть тесты для [internal/json_storage](internal/json_storage/json_storage_test.go) и [internal/usecases](internal/usecases)
+Есть тесты для [internal/json_storage](internal/json_storage/json_storage_test.go) и [internal/usecases](internal/core)
 ```shell
 make test
 make test-race
