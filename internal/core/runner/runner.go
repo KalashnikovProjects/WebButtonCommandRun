@@ -14,15 +14,8 @@ import (
 	"path/filepath"
 )
 
-type RunningCommand interface {
-	GetReader() io.Reader
-	GetWriter() io.Writer
-	Done() <-chan error
-	Kill() error
-}
-
 type Runner interface {
-	RunCommand(command string, options entities.TerminalOptions) (RunningCommand, error)
+	RunCommand(command string, options entities.TerminalOptions) (entities.RunningCommand, error)
 }
 
 type service struct {
@@ -144,7 +137,7 @@ func (s service) RunCommand(ctx context.Context, data data.Service, commandId ui
 
 	// Input goroutine
 	go func() {
-		defer func(processingCommand RunningCommand) {
+		defer func(processingCommand entities.RunningCommand) {
 			err := processingCommand.Kill()
 			if err != nil {
 				log.Warn("Error while killing command ", err)

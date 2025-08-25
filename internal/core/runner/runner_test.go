@@ -1,9 +1,10 @@
 package runner
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/console"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/storage/filesystem"
 	"os"
 	"os/exec"
 	"os/user"
@@ -13,7 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/storage/database"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/core/data"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/testutils"
 	"github.com/acarl005/stripansi"
@@ -31,20 +34,28 @@ func TestRunCommand_Success(t *testing.T) {
 	defer cleanup()
 
 	config.Config.DataFolderPath = tempDir
-	db, err := usecasesStorage.CreateDB()
+
+	db, err := database.Connect()
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	// seed command
-	err = db.SetUserConfig(entities.UserConfig{Commands: []entities.Command{{Name: "Echo", Command: "echo hello", Dir: os.TempDir()}}})
+	runnerAdapter := console.NewRunner()
+	runnerService := NewService(runnerAdapter)
+	filesystemAdapter, err := filesystem.Connect()
+	if err != nil {
+		t.Fatalf("Cant create filesystem connection: %v", err)
+	}
+	dataService := data.NewService(db, db, filesystemAdapter)
+
+	err = db.SetCommands([]entities.Command{{Name: "Echo", Command: "echo hello", Dir: os.TempDir()}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	command, err := RunCommand(ctx, &db, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -79,20 +90,27 @@ func TestRunCommand_InvalidCommand(t *testing.T) {
 	defer cleanup()
 
 	config.Config.DataFolderPath = tempDir
-	db, err := usecasesStorage.CreateDB()
+	db, err := database.Connect()
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
+	runnerAdapter := console.NewRunner()
+	runnerService := NewService(runnerAdapter)
+	filesystemAdapter, err := filesystem.Connect()
+	if err != nil {
+		t.Fatalf("Cant create filesystem connection: %v", err)
+	}
+	dataService := data.NewService(db, db, filesystemAdapter)
 	// seed invalid command
-	err = db.SetUserConfig(entities.UserConfig{Commands: []entities.Command{{Name: "Bad", Command: "nonexistentcommand1234", Dir: os.TempDir()}}})
+	err = db.SetCommands([]entities.Command{{Name: "Bad", Command: "nonexistentcommand1234", Dir: os.TempDir()}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	command, err := RunCommand(ctx, &db, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -126,17 +144,24 @@ func TestRunCommand_ContextCancel(t *testing.T) {
 	defer cleanup()
 
 	config.Config.DataFolderPath = tempDir
-	db, err := usecasesStorage.CreateDB()
+	db, err := database.Connect()
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
+	runnerAdapter := console.NewRunner()
+	runnerService := NewService(runnerAdapter)
+	filesystemAdapter, err := filesystem.Connect()
+	if err != nil {
+		t.Fatalf("Cant create filesystem connection: %v", err)
+	}
+	dataService := data.NewService(db, db, filesystemAdapter)
 	// seed long-running command
-	err = db.SetUserConfig(entities.UserConfig{Commands: []entities.Command{{Name: "Ping", Command: "ping 127.0.0.1", Dir: os.TempDir()}}})
+	err = db.SetCommands([]entities.Command{{Name: "Ping", Command: "ping 127.0.0.1", Dir: os.TempDir()}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
-	command, err := RunCommand(ctx, &db, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -173,26 +198,33 @@ func TestRunCommand_PythonInteractive(t *testing.T) {
 	defer cleanup()
 
 	config.Config.DataFolderPath = tempDir
-	db, err := usecasesStorage.CreateDB()
+	db, err := database.Connect()
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
+	runnerAdapter := console.NewRunner()
+	runnerService := NewService(runnerAdapter)
+	filesystemAdapter, err := filesystem.Connect()
+	if err != nil {
+		t.Fatalf("Cant create filesystem connection: %v", err)
+	}
+	dataService := data.NewService(db, db, filesystemAdapter)
 	// seed python command
-	err = db.SetUserConfig(entities.UserConfig{Commands: []entities.Command{{Name: "Py", Command: pythonCmd, Dir: os.TempDir()}}})
+	err = db.SetCommands([]entities.Command{{Name: "Py", Command: pythonCmd, Dir: os.TempDir()}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
 
-	command, err := RunCommand(ctx, &db, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	if command.Input == nil || command.Output == nil {
 		t.Fatal("command.Input or output channel is nil")
 	}
-	command.Input <- "1+2\re"
-	command.Input <- "xit()\r"
+	command.Input <- "1+2\r"
+	command.Input <- "exit()\r"
 	<-time.After(1 * time.Second)
 	result := ""
 	ok := true
@@ -238,13 +270,19 @@ func TestRunCommand_EditFile(t *testing.T) {
 	defer cleanup()
 
 	config.Config.DataFolderPath = tempDir
-	db, err := usecasesStorage.CreateDB()
+	db, err := database.Connect()
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
+	runnerAdapter := console.NewRunner()
+	runnerService := NewService(runnerAdapter)
+	filesystemAdapter, err := filesystem.Connect()
+	if err != nil {
+		t.Fatalf("Cant create filesystem connection: %v", err)
+	}
+	dataService := data.NewService(db, db, filesystemAdapter)
 
-	// seed command depending on OS to read a file placed into workDir
 	var commandText string
 	fileName := "embedded_test.txt"
 	if runtime.GOOS == "windows" {
@@ -252,18 +290,18 @@ func TestRunCommand_EditFile(t *testing.T) {
 	} else {
 		commandText = fmt.Sprintf("cat %s", fileName)
 	}
-	err = db.SetUserConfig(entities.UserConfig{Commands: []entities.Command{{Name: "WithFile", Command: commandText, Dir: workDir}}})
+	err = db.SetCommands([]entities.Command{{Name: "WithFile", Command: commandText, Dir: workDir}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
 	// attach embedded file content
 	fileContent := []byte("Hello from embedded file\n")
-	err = db.AppendFile(1, bytes.NewReader(fileContent), usecasesStorage.FileData{Filename: fileName, Size: uint64(len(fileContent))})
+	err = dataService.AppendFile(1, fileContent, entities.FileParams{Filename: fileName, Size: uint64(len(fileContent))})
 	if err != nil {
 		t.Fatalf("cant append file: %v", err)
 	}
 
-	command, err := RunCommand(ctx, &db, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -316,11 +354,18 @@ func TestRunCommand_ExecutionDir(t *testing.T) {
 	defer cleanup()
 
 	config.Config.DataFolderPath = tempDir
-	db, err := usecasesStorage.CreateDB()
+	db, err := database.Connect()
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
+	runnerAdapter := console.NewRunner()
+	runnerService := NewService(runnerAdapter)
+	filesystemAdapter, err := filesystem.Connect()
+	if err != nil {
+		t.Fatalf("Cant create filesystem connection: %v", err)
+	}
+	dataService := data.NewService(db, db, filesystemAdapter)
 
 	var commandText string
 	if runtime.GOOS == "windows" {
@@ -328,12 +373,12 @@ func TestRunCommand_ExecutionDir(t *testing.T) {
 	} else {
 		commandText = "pwd"
 	}
-	err = db.SetUserConfig(entities.UserConfig{Commands: []entities.Command{{Name: "CWD", Command: commandText, Dir: workDir}}})
+	err = db.SetCommands([]entities.Command{{Name: "CWD", Command: commandText, Dir: workDir}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
 
-	command, err := RunCommand(ctx, &db, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -372,23 +417,30 @@ func TestRunCommand_WithFile(t *testing.T) {
 	defer cleanup()
 
 	config.Config.DataFolderPath = tempDir
-	db, err := usecasesStorage.CreateDB()
+	db, err := database.Connect()
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	err = db.SetUserConfig(entities.UserConfig{Commands: []entities.Command{{Name: "Test", Command: "more test-file.txt", Dir: os.TempDir()}}})
+	runnerAdapter := console.NewRunner()
+	runnerService := NewService(runnerAdapter)
+	filesystemAdapter, err := filesystem.Connect()
+	if err != nil {
+		t.Fatalf("Cant create filesystem connection: %v", err)
+	}
+	dataService := data.NewService(db, db, filesystemAdapter)
+	err = db.SetCommands([]entities.Command{{Name: "Test", Command: "more test-file.txt", Dir: os.TempDir()}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
-	err = db.AppendFile(1, strings.NewReader("test data"), usecasesStorage.FileData{Filename: "test-file.txt", Size: uint64(len([]byte("test data")))})
+	err = dataService.AppendFile(1, []byte("test data"), entities.FileParams{Filename: "test-file.txt", Size: uint64(len([]byte("test data")))})
 	if err != nil {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	command, err := RunCommand(ctx, &db, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

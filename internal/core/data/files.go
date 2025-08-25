@@ -14,18 +14,6 @@ import (
 	"path/filepath"
 )
 
-type FileParams struct {
-	Filename string
-	Size     uint64
-}
-
-type FileData struct {
-	FileId    uint
-	CommandId uint
-	Bytes     []byte
-	Params    FileParams
-}
-
 func SetDefaultFilesNames(files []entities.EmbeddedFile) {
 	for i := 0; i < len(files); i++ {
 		SetDefaultFileName(&files[i])
@@ -42,7 +30,7 @@ func RandomFileName() string {
 	return fmt.Sprintf("File %d", rand.Intn(100))
 }
 
-func validateFile(data FileParams) error {
+func validateFile(data entities.FileParams) error {
 	if config.Config.MaxFileSize > 0 && int64(data.Size) > config.Config.MaxFileSize {
 		return projectErrors.ErrFileToBig
 	}
@@ -52,7 +40,7 @@ func validateFile(data FileParams) error {
 	return nil
 }
 
-func (s service) AppendFile(commandID uint, fileBytes []byte, data FileParams) error {
+func (s service) AppendFile(commandID uint, fileBytes []byte, data entities.FileParams) error {
 	exists, err := s.commandsRepo.CommandExists(commandID)
 	if err != nil {
 		return err
@@ -287,7 +275,7 @@ func (s service) ImportAllFilesFromZipArchive(data []byte) error {
 		return err
 	}
 	for _, file := range filesToAppend {
-		err = s.AppendFile(file.CommandId, file.Bytes, FileParams{Filename: file.Params.Filename, Size: file.Params.Size})
+		err = s.AppendFile(file.CommandId, file.Bytes, entities.FileParams{Filename: file.Params.Filename, Size: file.Params.Size})
 		if err != nil {
 			return err
 		}

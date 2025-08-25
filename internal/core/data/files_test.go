@@ -1,6 +1,8 @@
 package data
 
 import (
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/storage/database"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/storage/filesystem"
 	"strings"
 	"testing"
 
@@ -135,12 +137,12 @@ func TestValidateFile(t *testing.T) {
 
 	testCases := []struct {
 		name        string
-		fileData    FileParams
+		fileData    entities.FileParams
 		expectError bool
 	}{
 		{
 			name: "Valid file",
-			fileData: FileParams{
+			fileData: entities.FileParams{
 				Filename: "valid_file.txt",
 				Size:     512,
 			},
@@ -148,7 +150,7 @@ func TestValidateFile(t *testing.T) {
 		},
 		{
 			name: "File too big",
-			fileData: FileParams{
+			fileData: entities.FileParams{
 				Filename: "big_file.txt",
 				Size:     2048,
 			},
@@ -156,7 +158,7 @@ func TestValidateFile(t *testing.T) {
 		},
 		{
 			name: "Empty filename",
-			fileData: FileParams{
+			fileData: entities.FileParams{
 				Filename: "",
 				Size:     512,
 			},
@@ -164,7 +166,7 @@ func TestValidateFile(t *testing.T) {
 		},
 		{
 			name: "Invalid characters in filename",
-			fileData: FileParams{
+			fileData: entities.FileParams{
 				Filename: "file<>.txt",
 				Size:     512,
 			},
@@ -172,7 +174,7 @@ func TestValidateFile(t *testing.T) {
 		},
 		{
 			name: "Filename too long",
-			fileData: FileParams{
+			fileData: entities.FileParams{
 				Filename: strings.Repeat("a", 256),
 				Size:     512,
 			},
@@ -180,7 +182,7 @@ func TestValidateFile(t *testing.T) {
 		},
 		{
 			name: "Filename with dots only",
-			fileData: FileParams{
+			fileData: entities.FileParams{
 				Filename: "...",
 				Size:     512,
 			},
@@ -211,7 +213,7 @@ func TestAppendFile(t *testing.T) {
 		name          string
 		initialConfig entities.UserConfig
 		commandID     uint
-		fileData      FileParams
+		fileData      entities.FileParams
 		fileContent   string
 		expectError   bool
 	}{
@@ -224,7 +226,7 @@ func TestAppendFile(t *testing.T) {
 				},
 			},
 			commandID:   1,
-			fileData:    FileParams{Filename: "test.txt", Size: 10},
+			fileData:    entities.FileParams{Filename: "test.txt", Size: 10},
 			fileContent: "test content",
 			expectError: false,
 		},
@@ -237,7 +239,7 @@ func TestAppendFile(t *testing.T) {
 				},
 			},
 			commandID:   2,
-			fileData:    FileParams{Filename: "test.txt", Size: 10},
+			fileData:    entities.FileParams{Filename: "test.txt", Size: 10},
 			fileContent: "test content",
 			expectError: true,
 		},
@@ -250,7 +252,7 @@ func TestAppendFile(t *testing.T) {
 				},
 			},
 			commandID:   1,
-			fileData:    FileParams{Filename: "", Size: 10},
+			fileData:    entities.FileParams{Filename: "", Size: 10},
 			fileContent: "test content",
 			expectError: true,
 		},
@@ -258,28 +260,32 @@ func TestAppendFile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var u service
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
 			config.Config.DataFolderPath = tmpDir
-			db, err = CreateDB()
+			db, err := database.Connect()
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(u service) {
+			defer func(u database.DB) {
 				err := db.Close()
 				if err != nil {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			err = db.SetUserConfig(tc.initialConfig)
+			filesystemAdaptor, err := filesystem.Connect()
+			if err != nil {
+				t.Fatalf("Cant set connect filesystem: %v", err)
+			}
+			dataService := NewService(db, db, filesystemAdaptor)
+
+			err = dataService.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			fileReader := strings.NewReader(tc.fileContent)
-			err = db.AppendFile(tc.commandID, fileReader, tc.fileData)
+			err = dataService.AppendFile(tc.commandID, []byte(tc.fileContent), tc.fileData)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
@@ -289,7 +295,7 @@ func TestAppendFile(t *testing.T) {
 
 			if !tc.expectError {
 				// Check that file was added to database
-				files, err := db.GetCommandFilesList(tc.commandID)
+				files, err := dataService.GetCommandFilesList(tc.commandID)
 				if err != nil {
 					t.Fatalf("Cant get command files: %v", err)
 				}
@@ -345,36 +351,40 @@ func TestDeleteFile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var u service
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
 			config.Config.DataFolderPath = tmpDir
-			db, err = CreateDB()
+			db, err := database.Connect()
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(u service) {
+			defer func(u database.DB) {
 				err := db.Close()
 				if err != nil {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			err = db.SetUserConfig(tc.initialConfig)
+			filesystemAdaptor, err := filesystem.Connect()
+			if err != nil {
+				t.Fatalf("Cant set connect filesystem: %v", err)
+			}
+			dataService := NewService(db, db, filesystemAdaptor)
+
+			err = dataService.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
 			// Add a test file first
 			if !tc.expectError {
-				fileReader := strings.NewReader("test content")
-				err = db.AppendFile(tc.commandID, fileReader, FileParams{Filename: "test.txt", Size: 12})
+				err = dataService.AppendFile(tc.commandID, []byte("test content"), entities.FileParams{Filename: "test.txt", Size: 12})
 				if err != nil {
 					t.Fatalf("Cant append test file: %v", err)
 				}
 			}
 
-			err = db.DeleteFile(tc.commandID, tc.fileID)
+			err = dataService.DeleteFile(tc.commandID, tc.fileID)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
@@ -429,36 +439,40 @@ func TestPatchFile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var u service
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
 			config.Config.DataFolderPath = tmpDir
-			db, err = CreateDB()
+			db, err := database.Connect()
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(u service) {
+			defer func(u database.DB) {
 				err := db.Close()
 				if err != nil {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			err = db.SetUserConfig(tc.initialConfig)
+			filesystemAdaptor, err := filesystem.Connect()
+			if err != nil {
+				t.Fatalf("Cant set connect filesystem: %v", err)
+			}
+			dataService := NewService(db, db, filesystemAdaptor)
+
+			err = dataService.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
 			// Add a test file first
 			if !tc.expectError {
-				fileReader := strings.NewReader("test content")
-				err = db.AppendFile(tc.commandID, fileReader, FileParams{Filename: "test.txt", Size: 12})
+				err = dataService.AppendFile(tc.commandID, []byte("test content"), entities.FileParams{Filename: "test.txt", Size: 12})
 				if err != nil {
 					t.Fatalf("Cant append test file: %v", err)
 				}
 			}
 
-			err = db.PatchFile(tc.commandID, tc.fileID, tc.newFile)
+			err = dataService.PatchFile(tc.commandID, tc.fileID, tc.newFile)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
@@ -526,36 +540,40 @@ func TestPutFile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var u service
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
 			config.Config.DataFolderPath = tmpDir
-			db, err = CreateDB()
+			db, err := database.Connect()
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(u service) {
+			defer func(u database.DB) {
 				err := db.Close()
 				if err != nil {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			err = db.SetUserConfig(tc.initialConfig)
+			filesystemAdaptor, err := filesystem.Connect()
+			if err != nil {
+				t.Fatalf("Cant set connect filesystem: %v", err)
+			}
+			dataService := NewService(db, db, filesystemAdaptor)
+
+			err = dataService.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
 			// Add a test file first
 			if !tc.expectError {
-				fileReader := strings.NewReader("test content")
-				err = db.AppendFile(tc.commandID, fileReader, FileParams{Filename: "test.txt", Size: 12})
+				err = dataService.AppendFile(tc.commandID, []byte("test content"), entities.FileParams{Filename: "test.txt", Size: 12})
 				if err != nil {
 					t.Fatalf("Cant append test file: %v", err)
 				}
 			}
 
-			err = db.PutFile(tc.commandID, tc.fileID, tc.newFile)
+			err = dataService.PutFile(tc.commandID, tc.fileID, tc.newFile)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
@@ -607,36 +625,40 @@ func TestGetFile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var u service
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
 			config.Config.DataFolderPath = tmpDir
-			db, err = CreateDB()
+			db, err := database.Connect()
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(u service) {
+			defer func(u database.DB) {
 				err := db.Close()
 				if err != nil {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			err = db.SetUserConfig(tc.initialConfig)
+			filesystemAdaptor, err := filesystem.Connect()
+			if err != nil {
+				t.Fatalf("Cant set connect filesystem: %v", err)
+			}
+			dataService := NewService(db, db, filesystemAdaptor)
+
+			err = dataService.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
 			// Add a test file first
 			if !tc.expectError {
-				fileReader := strings.NewReader("test content")
-				err = db.AppendFile(tc.commandID, fileReader, FileParams{Filename: "test.txt", Size: 12})
+				err = dataService.AppendFile(tc.commandID, []byte("test content"), entities.FileParams{Filename: "test.txt", Size: 12})
 				if err != nil {
 					t.Fatalf("Cant append test file: %v", err)
 				}
 			}
 
-			_, err = db.GetFile(tc.commandID, tc.fileID)
+			_, err = dataService.GetFile(tc.commandID, tc.fileID)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
@@ -685,27 +707,32 @@ func TestGetCommandFilesList(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var u service
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
 			config.Config.DataFolderPath = tmpDir
-			db, err = CreateDB()
+			db, err := database.Connect()
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(u service) {
+			defer func(u database.DB) {
 				err := db.Close()
 				if err != nil {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			err = db.SetUserConfig(tc.initialConfig)
+			filesystemAdaptor, err := filesystem.Connect()
+			if err != nil {
+				t.Fatalf("Cant set connect filesystem: %v", err)
+			}
+			dataService := NewService(db, db, filesystemAdaptor)
+
+			err = dataService.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			_, err = db.GetCommandFilesList(tc.commandID)
+			_, err = dataService.GetCommandFilesList(tc.commandID)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
@@ -722,24 +749,27 @@ func TestGetAllFilesList(t *testing.T) {
 		t.Fatalf("Cant init configs: %v", err)
 	}
 
-	var u service
 	tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 	defer cleanup()
 
 	config.Config.DataFolderPath = tmpDir
-	db, err = CreateDB()
+	db, err := database.Connect()
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
-	defer func(u service) {
+	defer func(u database.DB) {
 		err := db.Close()
 		if err != nil {
 			t.Errorf("Error closing db: %v", err)
 		}
 	}(db)
+	filesystemAdaptor, err := filesystem.Connect()
+	if err != nil {
+		t.Fatalf("Cant set connect filesystem: %v", err)
+	}
+	dataService := NewService(db, db, filesystemAdaptor)
 
-	// Test getting all files list
-	files, err := db.GetAllFilesList()
+	files, err := dataService.GetAllFilesList()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -792,36 +822,40 @@ func TestDownloadFile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var u service
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
 			config.Config.DataFolderPath = tmpDir
-			db, err = CreateDB()
+			db, err := database.Connect()
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(u service) {
+			defer func(u database.DB) {
 				err := db.Close()
 				if err != nil {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			err = db.SetUserConfig(tc.initialConfig)
+			filesystemAdaptor, err := filesystem.Connect()
+			if err != nil {
+				t.Fatalf("Cant set connect filesystem: %v", err)
+			}
+			dataService := NewService(db, db, filesystemAdaptor)
+
+			err = dataService.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
 			// Add a test file first
 			if !tc.expectError {
-				fileReader := strings.NewReader(tc.fileContent)
-				err = db.AppendFile(tc.commandID, fileReader, FileParams{Filename: "test.txt", Size: uint64(len(tc.fileContent))})
+				err = dataService.AppendFile(tc.commandID, []byte(tc.fileContent), entities.FileParams{Filename: "test.txt", Size: uint64(len(tc.fileContent))})
 				if err != nil {
 					t.Fatalf("Cant append test file: %v", err)
 				}
 			}
 
-			_, data, err := db.DownloadFile(tc.commandID, tc.fileID)
+			_, data, err := dataService.DownloadFile(tc.commandID, tc.fileID)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
@@ -875,40 +909,43 @@ func TestDownloadCommandFilesInArchive(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var u service
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
 			config.Config.DataFolderPath = tmpDir
-			db, err = CreateDB()
+			db, err := database.Connect()
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
-			defer func(u service) {
+			defer func(u database.DB) {
 				err := db.Close()
 				if err != nil {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			err = db.SetUserConfig(tc.initialConfig)
+			filesystemAdaptor, err := filesystem.Connect()
+			if err != nil {
+				t.Fatalf("Cant set connect filesystem: %v", err)
+			}
+			dataService := NewService(db, db, filesystemAdaptor)
+
+			err = dataService.SetUserConfig(tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
 			if tc.name == "Download archive for command with files" {
-				fileReader1 := strings.NewReader("content1")
-				err = db.AppendFile(tc.commandID, fileReader1, FileParams{Filename: "file1.txt", Size: 8})
+				err = dataService.AppendFile(tc.commandID, []byte("content1"), entities.FileParams{Filename: "file1.txt", Size: 8})
 				if err != nil {
 					t.Fatalf("Cant append test file 1: %v", err)
 				}
-				fileReader2 := strings.NewReader("content2")
-				err = db.AppendFile(tc.commandID, fileReader2, FileParams{Filename: "file2.txt", Size: 8})
+				err = dataService.AppendFile(tc.commandID, []byte("content2"), entities.FileParams{Filename: "file2.txt", Size: 8})
 				if err != nil {
 					t.Fatalf("Cant append test file 2: %v", err)
 				}
 			}
 
-			data, err := db.DownloadCommandFilesInArchive(tc.commandID)
+			data, err := dataService.DownloadCommandFilesInArchive(tc.commandID)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
@@ -930,23 +967,27 @@ func TestDownloadAllFilesInArchive(t *testing.T) {
 		t.Fatalf("Cant init configs: %v", err)
 	}
 
-	var u service
 	tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 	defer cleanup()
 
 	config.Config.DataFolderPath = tmpDir
-	db, err = CreateDB()
+	db, err := database.Connect()
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
-	defer func(u service) {
+	defer func(u database.DB) {
 		err := db.Close()
 		if err != nil {
 			t.Errorf("Error closing db: %v", err)
 		}
 	}(db)
+	filesystemAdaptor, err := filesystem.Connect()
+	if err != nil {
+		t.Fatalf("Cant set connect filesystem: %v", err)
+	}
+	dataService := NewService(db, db, filesystemAdaptor)
 
-	data, err := db.DownloadAllFilesInArchive()
+	data, err := dataService.DownloadAllFilesInArchive()
 	if err != nil {
 		t.Fatalf("Unexpected error: %v", err)
 	}
@@ -961,23 +1002,28 @@ func TestImportAllFilesFromArchive(t *testing.T) {
 		t.Fatalf("Cant init configs: %v", err)
 	}
 
-	var u service
 	tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 	defer cleanup()
 
 	config.Config.DataFolderPath = tmpDir
-	db, err = CreateDB()
+	db, err := database.Connect()
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
-	defer func(u service) {
+	defer func(u database.DB) {
 		err := db.Close()
 		if err != nil {
 			t.Errorf("Error closing db: %v", err)
 		}
 	}(db)
+	filesystemAdaptor, err := filesystem.Connect()
+	if err != nil {
+		t.Fatalf("Cant set connect filesystem: %v", err)
+	}
+	dataService := NewService(db, db, filesystemAdaptor)
+
 	var emptyData []byte
-	err = db.ImportAllFilesFromArchive(emptyData)
+	err = dataService.ImportAllFilesFromZipArchive(emptyData)
 	if err == nil {
 		t.Log("Import with empty data succeeded (unexpected)")
 	}

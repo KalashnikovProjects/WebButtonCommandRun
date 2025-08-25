@@ -37,7 +37,7 @@ type Filesystem interface {
 	GetFileData(fileId uint) ([]byte, error)
 	DeleteFile(fileId uint) error
 	ClearFiles() error
-	ImportFilesFromZipArchive(data []byte) ([]FileData, error)
+	ImportFilesFromZipArchive(data []byte) ([]entities.FileData, error)
 }
 
 type service struct {
@@ -55,7 +55,7 @@ type Service interface {
 	GetCommand(commandId uint) (entities.Command, error)
 	CommandExists(commandId uint) (bool, error)
 
-	AppendFile(commandID uint, fileBytes []byte, data FileParams) error
+	AppendFile(commandID uint, fileBytes []byte, data entities.FileParams) error
 	DeleteFile(commandId, fileId uint) error
 	PatchFile(commandId, fileId uint, newFile entities.EmbeddedFile) error
 	PutFile(commandId, fileId uint, newFile entities.EmbeddedFile) error

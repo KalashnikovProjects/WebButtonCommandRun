@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
-	coreRunner "github.com/KalashnikovProjects/WebButtonCommandRun/internal/core/runner"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/iamacarpet/go-winpty"
 )
@@ -25,7 +24,7 @@ func NewRunner() *Runner {
 	return &Runner{}
 }
 
-func (r Runner) RunCommand(command string, options entities.TerminalOptions) (coreRunner.RunningCommand, error) {
+func (r Runner) RunCommand(command string, options entities.TerminalOptions) (entities.RunningCommand, error) {
 	wp, err := winpty.OpenWithOptions(winpty.Options{
 		Dir:         options.Dir,
 		DLLPrefix:   filepath.Join(config.Config.RootDir, "pty"),

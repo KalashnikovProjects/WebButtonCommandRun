@@ -1,6 +1,9 @@
 package entities
 
-import "github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
+import (
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
+	"io"
+)
 
 type TerminalOptions struct {
 	Cols uint16   `json:"cols"`
@@ -46,4 +49,23 @@ func UserConfigDefaults() UserConfig {
 	return UserConfig{
 		UsingConsole: config.Config.Console,
 	}
+}
+
+type RunningCommand interface {
+	GetReader() io.Reader
+	GetWriter() io.Writer
+	Done() <-chan error
+	Kill() error
+}
+
+type FileParams struct {
+	Filename string
+	Size     uint64
+}
+
+type FileData struct {
+	FileId    uint
+	CommandId uint
+	Bytes     []byte
+	Params    FileParams
 }

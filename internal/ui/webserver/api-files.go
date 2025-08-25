@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/core/data"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	projectErrors "github.com/KalashnikovProjects/WebButtonCommandRun/internal/errors"
 	"github.com/gofiber/fiber/v2"
@@ -50,7 +49,7 @@ func PostFiles(s Services) fiber.Handler {
 							log.Warn(err)
 						}
 					}(src)
-					if err := s.Data.AppendFile(uint(commandId), fileBytes, data.FileParams{Filename: file.Filename, Size: uint64(file.Size)}); err != nil {
+					if err := s.Data.AppendFile(uint(commandId), fileBytes, entities.FileParams{Filename: file.Filename, Size: uint64(file.Size)}); err != nil {
 						if errors.Is(err, projectErrors.ErrNotFound) {
 							return fiber.ErrNotFound
 						}

@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/core/data"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/gofiber/fiber/v2/log"
 	"io"
 	"os"
@@ -86,12 +86,12 @@ func (a Adapter) DeleteFile(fileId uint) error {
 	return err
 }
 
-func (a Adapter) ImportFilesFromZipArchive(archiveBytes []byte) ([]data.FileData, error) {
+func (a Adapter) ImportFilesFromZipArchive(archiveBytes []byte) ([]entities.FileData, error) {
 	reader, err := zip.NewReader(bytes.NewReader(archiveBytes), int64(len(archiveBytes)))
 	if err != nil {
 		return nil, err
 	}
-	var res []data.FileData
+	var res []entities.FileData
 	for _, file := range reader.File {
 		if file.FileInfo().IsDir() {
 			continue
@@ -128,11 +128,11 @@ func (a Adapter) ImportFilesFromZipArchive(archiveBytes []byte) ([]data.FileData
 		if err != nil {
 			return nil, err
 		}
-		res = append(res, data.FileData{
+		res = append(res, entities.FileData{
 			FileId:    uint(fileId),
 			CommandId: uint(commandId),
 			Bytes:     fileBytes,
-			Params: data.FileParams{
+			Params: entities.FileParams{
 				Filename: fileName,
 				Size:     file.UncompressedSize64,
 			},
