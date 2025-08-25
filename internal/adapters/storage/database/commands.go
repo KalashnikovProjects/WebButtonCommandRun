@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -31,7 +32,11 @@ func (db DB) GetCommands() ([]entities.Command, error) {
 	var data []entities.Command
 	result := db.db.Order("ID").Find(&data)
 	if result.Error != nil {
-		return data, fmt.Errorf("error in db operation %w", result.Error)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, ErrorNotFound
+		} else {
+			return nil, fmt.Errorf("error in db operation %w", result.Error)
+		}
 	}
 	return data, nil
 }
@@ -60,7 +65,11 @@ func (db DB) GetCommand(id uint) (entities.Command, error) {
 	var data entities.Command
 	result := db.db.Take(&data, id)
 	if result.Error != nil {
-		return data, fmt.Errorf("error in db operation %w", result.Error)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return entities.Command{}, ErrorNotFound
+		} else {
+			return entities.Command{}, fmt.Errorf("error in db operation %w", result.Error)
+		}
 	}
 	return data, nil
 }

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -57,7 +58,11 @@ func (db DB) GetFile(commandId, id uint) (entities.EmbeddedFile, error) {
 	result := db.db.Where("id = ? and command_id = ?", id, commandId).Take(&data)
 
 	if result.Error != nil {
-		return data, fmt.Errorf("error in db operation %w", result.Error)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return entities.EmbeddedFile{}, ErrorNotFound
+		} else {
+			return entities.EmbeddedFile{}, fmt.Errorf("error in db operation %w", result.Error)
+		}
 	}
 	return data, nil
 }
