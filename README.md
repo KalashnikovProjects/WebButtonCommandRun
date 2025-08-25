@@ -47,7 +47,7 @@ make BINARIES_PATH=. build-current
 
 ## Tests
 
-There are tests for [internal/json_storage](internal/json_storage/json_storage_test.go) and [internal/usecases](internal/usecases)
+There are tests for [internal/json_storage](internal/json_storage/json_storage_test.go) and [internal/usecases](internal/core)
 ```shell
 make test
 make test-race
