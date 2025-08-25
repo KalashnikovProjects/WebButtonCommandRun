@@ -12,12 +12,18 @@ import (
 	"math/rand"
 	"os"
 	"path/filepath"
-	"strings"
 )
 
-type FileData struct {
+type FileParams struct {
 	Filename string
 	Size     uint64
+}
+
+type FileData struct {
+	FileId    uint
+	CommandId uint
+	Bytes     []byte
+	Params    FileParams
 }
 
 func SetDefaultFilesNames(files []entities.EmbeddedFile) {
@@ -36,7 +42,7 @@ func RandomFileName() string {
 	return fmt.Sprintf("File %d", rand.Intn(100))
 }
 
-func validateFile(data FileData) error {
+func validateFile(data FileParams) error {
 	if config.Config.MaxFileSize > 0 && int64(data.Size) > config.Config.MaxFileSize {
 		return projectErrors.ErrFileToBig
 	}
@@ -46,33 +52,7 @@ func validateFile(data FileData) error {
 	return nil
 }
 
-func saveFile(fileId uint, file io.Reader) error {
-	filesDir := filepath.Join(config.Config.DataFolderPath, "files")
-	if err := os.MkdirAll(filesDir, 0750); err != nil {
-		return err
-	}
-
-	filePath := filepath.Join(filesDir, fmt.Sprintf("%d", fileId))
-
-	dst, err := os.Create(filePath)
-	if err != nil {
-		return err
-	}
-	defer func(dst *os.File) {
-		err := dst.Close()
-		if err != nil {
-			log.Warn(err)
-		}
-	}(dst)
-
-	if _, err := dst.ReadFrom(file); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (s service) AppendFile(commandID uint, file io.Reader, data FileData) error {
+func (s service) AppendFile(commandID uint, fileBytes []byte, data FileParams) error {
 	exists, err := s.commandsRepo.CommandExists(commandID)
 	if err != nil {
 		return err
@@ -91,7 +71,7 @@ func (s service) AppendFile(commandID uint, file io.Reader, data FileData) error
 	if err := s.filesRepo.AppendFile(&embeddedFile); err != nil {
 		return err
 	}
-	if err := saveFile(embeddedFile.ID, file); err != nil {
+	if err := s.filesystem.SaveFile(embeddedFile.ID, fileBytes); err != nil {
 		return err
 	}
 	return nil
@@ -102,20 +82,11 @@ func (s service) DeleteFile(commandId, fileId uint) error {
 	if err != nil {
 		return err
 	}
-	err = deleteFile(fileId)
+	err = s.filesystem.DeleteFile(fileId)
 	if err != nil {
 		return err
 	}
 	return nil
-}
-
-func deleteFile(fileId uint) error {
-	filePath := filepath.Join(config.Config.DataFolderPath, "files", fmt.Sprintf("%d", fileId))
-	err := os.Remove(filePath)
-	if err != nil {
-		return err
-	}
-	return err
 }
 
 func (s service) PatchFile(commandId, fileId uint, newFile entities.EmbeddedFile) error {
@@ -168,22 +139,11 @@ func (s service) GetAllFilesList() ([]entities.EmbeddedFile, error) {
 
 func (s service) DownloadFile(commandId, fileId uint) (entities.EmbeddedFile, []byte, error) {
 	fileData, err := s.GetFile(commandId, fileId)
+	data, err := s.filesystem.GetFileData(fileId)
 	if err != nil {
 		return entities.EmbeddedFile{}, nil, err
 	}
-	filePath := filepath.Join(config.Config.DataFolderPath, "files", fmt.Sprintf("%d", fileId))
-	file, err := os.Open(filePath)
-	if err != nil {
-		return entities.EmbeddedFile{}, nil, err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Warn(err)
-		}
-	}(file)
-	res, err := io.ReadAll(file)
-	return fileData, res, err
+	return fileData, data, err
 }
 
 func (s service) DownloadCommandFilesInArchive(commandId uint) ([]byte, error) {
@@ -315,59 +275,19 @@ func (s service) clearFiles() error {
 	if err != nil {
 		return err
 	}
-	err = os.RemoveAll(filepath.Join(config.Config.DataFolderPath, "files"))
-	if err != nil {
-		return err
-	}
-	err = os.MkdirAll(filepath.Join(config.Config.DataFolderPath, "files"), 0750)
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.filesystem.ClearFiles()
 }
 
-func (s service) ImportAllFilesFromArchive(data []byte) error {
+func (s service) ImportAllFilesFromZipArchive(data []byte) error {
 	if err := s.clearFiles(); err != nil {
 		return err
 	}
-	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
+	filesToAppend, err := s.filesystem.ImportFilesFromZipArchive(data)
 	if err != nil {
 		return err
 	}
-	for _, file := range reader.File {
-		if file.FileInfo().IsDir() {
-			continue
-		}
-		path := file.Name
-		var commandId int
-		var commandName string
-		var fileId int
-		var fileName string
-
-		pathList := strings.Split(filepath.ToSlash(filepath.Clean(path)), "/")
-		if len(pathList) != 3 {
-			continue
-		}
-		_, err = fmt.Sscanf(pathList[1], "Command id %d - %s", &commandId, &commandName)
-		if err != nil {
-			continue
-		}
-
-		parts := strings.SplitN(pathList[2], " - ", -1)
-		if len(parts) != 2 {
-			continue
-		}
-		_, err = fmt.Sscanf(parts[0], "Id %d", &fileId)
-		if err != nil {
-			continue
-		}
-		fileName = parts[1]
-		f, err := file.Open()
-		if err != nil {
-			return err
-		}
-
-		err = s.AppendFile(uint(commandId), f, FileData{Filename: fileName, Size: file.UncompressedSize64})
+	for _, file := range filesToAppend {
+		err = s.AppendFile(file.CommandId, file.Bytes, FileParams{Filename: file.Params.Filename, Size: file.Params.Size})
 		if err != nil {
 			return err
 		}

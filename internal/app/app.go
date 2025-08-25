@@ -16,7 +16,7 @@ func Run() {
 	if err != nil {
 		log.Fatalw("Error while init configs", err)
 	}
-	db, err := database.Connect()
+	dbAdapter, err := database.Connect()
 	if err != nil {
 		log.Fatalw("Error while connecting to storage", err)
 	}
@@ -25,14 +25,14 @@ func Run() {
 		if err != nil {
 			log.Warnw("Error while closing connection to storage", err)
 		}
-	}(db)
-	fileSystem, err := filesystem.Connect()
+	}(dbAdapter)
+	fileSystemAdapter, err := filesystem.Connect()
 	if err != nil {
 		log.Fatalw("Error while connecting to storage", err)
 	}
-	dataService := data.NewService(db, db, fileSystem)
-	adapter := &runnerAdapter{consoleRunner: console.NewRunner()}
-	runnerService := runner.NewService(adapter)
+	dataService := data.NewService(dbAdapter, dbAdapter, fileSystemAdapter)
+	runnerAdapter := console.NewRunner()
+	runnerService := runner.NewService(runnerAdapter)
 	appData := webserver.NewServices(dataService, runnerService)
 	app := webserver.CreateApp(*appData)
 	err = webserver.RunApp(app)

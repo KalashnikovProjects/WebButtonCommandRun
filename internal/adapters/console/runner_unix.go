@@ -5,6 +5,7 @@ package console
 import (
 	"fmt"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
+	coreRunner "github.com/KalashnikovProjects/WebButtonCommandRun/internal/core/runner"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/creack/pty"
 	"github.com/gofiber/fiber/v2/log"
@@ -25,7 +26,7 @@ func NewRunner() *Runner {
 	return &Runner{}
 }
 
-func (r runner) RunCommand(command string, options entities.TerminalOptions) (*unixCommand, error) {
+func (r runner) RunCommand(command string, options entities.TerminalOptions) (coreRunner.RunningCommand, error) {
 	cmd := exec.Command(config.Config.Console, "-c", command)
 	cmd.Dir = options.Dir
 	cmd.Env = append(options.Env, "PWD="+options.Dir)

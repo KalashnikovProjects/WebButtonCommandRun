@@ -135,12 +135,12 @@ func TestValidateFile(t *testing.T) {
 
 	testCases := []struct {
 		name        string
-		fileData    FileData
+		fileData    FileParams
 		expectError bool
 	}{
 		{
 			name: "Valid file",
-			fileData: FileData{
+			fileData: FileParams{
 				Filename: "valid_file.txt",
 				Size:     512,
 			},
@@ -148,7 +148,7 @@ func TestValidateFile(t *testing.T) {
 		},
 		{
 			name: "File too big",
-			fileData: FileData{
+			fileData: FileParams{
 				Filename: "big_file.txt",
 				Size:     2048,
 			},
@@ -156,7 +156,7 @@ func TestValidateFile(t *testing.T) {
 		},
 		{
 			name: "Empty filename",
-			fileData: FileData{
+			fileData: FileParams{
 				Filename: "",
 				Size:     512,
 			},
@@ -164,7 +164,7 @@ func TestValidateFile(t *testing.T) {
 		},
 		{
 			name: "Invalid characters in filename",
-			fileData: FileData{
+			fileData: FileParams{
 				Filename: "file<>.txt",
 				Size:     512,
 			},
@@ -172,7 +172,7 @@ func TestValidateFile(t *testing.T) {
 		},
 		{
 			name: "Filename too long",
-			fileData: FileData{
+			fileData: FileParams{
 				Filename: strings.Repeat("a", 256),
 				Size:     512,
 			},
@@ -180,7 +180,7 @@ func TestValidateFile(t *testing.T) {
 		},
 		{
 			name: "Filename with dots only",
-			fileData: FileData{
+			fileData: FileParams{
 				Filename: "...",
 				Size:     512,
 			},
@@ -211,7 +211,7 @@ func TestAppendFile(t *testing.T) {
 		name          string
 		initialConfig entities.UserConfig
 		commandID     uint
-		fileData      FileData
+		fileData      FileParams
 		fileContent   string
 		expectError   bool
 	}{
@@ -224,7 +224,7 @@ func TestAppendFile(t *testing.T) {
 				},
 			},
 			commandID:   1,
-			fileData:    FileData{Filename: "test.txt", Size: 10},
+			fileData:    FileParams{Filename: "test.txt", Size: 10},
 			fileContent: "test content",
 			expectError: false,
 		},
@@ -237,7 +237,7 @@ func TestAppendFile(t *testing.T) {
 				},
 			},
 			commandID:   2,
-			fileData:    FileData{Filename: "test.txt", Size: 10},
+			fileData:    FileParams{Filename: "test.txt", Size: 10},
 			fileContent: "test content",
 			expectError: true,
 		},
@@ -250,7 +250,7 @@ func TestAppendFile(t *testing.T) {
 				},
 			},
 			commandID:   1,
-			fileData:    FileData{Filename: "", Size: 10},
+			fileData:    FileParams{Filename: "", Size: 10},
 			fileContent: "test content",
 			expectError: true,
 		},
@@ -368,7 +368,7 @@ func TestDeleteFile(t *testing.T) {
 			// Add a test file first
 			if !tc.expectError {
 				fileReader := strings.NewReader("test content")
-				err = db.AppendFile(tc.commandID, fileReader, FileData{Filename: "test.txt", Size: 12})
+				err = db.AppendFile(tc.commandID, fileReader, FileParams{Filename: "test.txt", Size: 12})
 				if err != nil {
 					t.Fatalf("Cant append test file: %v", err)
 				}
@@ -452,7 +452,7 @@ func TestPatchFile(t *testing.T) {
 			// Add a test file first
 			if !tc.expectError {
 				fileReader := strings.NewReader("test content")
-				err = db.AppendFile(tc.commandID, fileReader, FileData{Filename: "test.txt", Size: 12})
+				err = db.AppendFile(tc.commandID, fileReader, FileParams{Filename: "test.txt", Size: 12})
 				if err != nil {
 					t.Fatalf("Cant append test file: %v", err)
 				}
@@ -549,7 +549,7 @@ func TestPutFile(t *testing.T) {
 			// Add a test file first
 			if !tc.expectError {
 				fileReader := strings.NewReader("test content")
-				err = db.AppendFile(tc.commandID, fileReader, FileData{Filename: "test.txt", Size: 12})
+				err = db.AppendFile(tc.commandID, fileReader, FileParams{Filename: "test.txt", Size: 12})
 				if err != nil {
 					t.Fatalf("Cant append test file: %v", err)
 				}
@@ -630,7 +630,7 @@ func TestGetFile(t *testing.T) {
 			// Add a test file first
 			if !tc.expectError {
 				fileReader := strings.NewReader("test content")
-				err = db.AppendFile(tc.commandID, fileReader, FileData{Filename: "test.txt", Size: 12})
+				err = db.AppendFile(tc.commandID, fileReader, FileParams{Filename: "test.txt", Size: 12})
 				if err != nil {
 					t.Fatalf("Cant append test file: %v", err)
 				}
@@ -815,7 +815,7 @@ func TestDownloadFile(t *testing.T) {
 			// Add a test file first
 			if !tc.expectError {
 				fileReader := strings.NewReader(tc.fileContent)
-				err = db.AppendFile(tc.commandID, fileReader, FileData{Filename: "test.txt", Size: uint64(len(tc.fileContent))})
+				err = db.AppendFile(tc.commandID, fileReader, FileParams{Filename: "test.txt", Size: uint64(len(tc.fileContent))})
 				if err != nil {
 					t.Fatalf("Cant append test file: %v", err)
 				}
@@ -897,12 +897,12 @@ func TestDownloadCommandFilesInArchive(t *testing.T) {
 
 			if tc.name == "Download archive for command with files" {
 				fileReader1 := strings.NewReader("content1")
-				err = db.AppendFile(tc.commandID, fileReader1, FileData{Filename: "file1.txt", Size: 8})
+				err = db.AppendFile(tc.commandID, fileReader1, FileParams{Filename: "file1.txt", Size: 8})
 				if err != nil {
 					t.Fatalf("Cant append test file 1: %v", err)
 				}
 				fileReader2 := strings.NewReader("content2")
-				err = db.AppendFile(tc.commandID, fileReader2, FileData{Filename: "file2.txt", Size: 8})
+				err = db.AppendFile(tc.commandID, fileReader2, FileParams{Filename: "file2.txt", Size: 8})
 				if err != nil {
 					t.Fatalf("Cant append test file 2: %v", err)
 				}

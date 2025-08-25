@@ -1,6 +1,7 @@
 package webserver
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
@@ -9,6 +10,7 @@ import (
 	projectErrors "github.com/KalashnikovProjects/WebButtonCommandRun/internal/errors"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/log"
+	"golang.org/x/sync/errgroup"
 	"io"
 	"mime/multipart"
 	"strings"
@@ -16,6 +18,7 @@ import (
 
 func PostFiles(s Services) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		ctx := context.Background()
 		commandId, err := c.ParamsInt("command_id")
 		if err != nil || commandId < 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid command id")
@@ -25,38 +28,49 @@ func PostFiles(s Services) fiber.Handler {
 			return err
 		}
 		files := form.File["files"]
+		group, ctx := errgroup.WithContext(ctx)
+		doBrake := false
 		for _, file := range files {
-			err = func() error {
-				src, err := file.Open()
-				if err != nil {
-					return fmt.Errorf("error opening file: %w", err)
-				}
-				defer func(src multipart.File) {
-					err := src.Close()
+			select {
+			case <-ctx.Done():
+				doBrake = true
+			default:
+				group.Go(func() error {
+					src, err := file.Open()
 					if err != nil {
-						log.Warn(err)
+						return fmt.Errorf("error opening file: %w", err)
 					}
-				}(src)
-				if err := s.Data.AppendFile(uint(commandId), src, data.FileData{Filename: file.Filename, Size: uint64(file.Size)}); err != nil {
-					if errors.Is(err, projectErrors.ErrNotFound) {
-						return fiber.ErrNotFound
+					fileBytes, err := io.ReadAll(src)
+					if err != nil {
+						return err
 					}
-					if errors.Is(err, projectErrors.ErrFileToBig) {
-						return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("too big file (max %d) bytes", config.Config.MaxFileSize))
+					defer func(src multipart.File) {
+						err := src.Close()
+						if err != nil {
+							log.Warn(err)
+						}
+					}(src)
+					if err := s.Data.AppendFile(uint(commandId), fileBytes, data.FileParams{Filename: file.Filename, Size: uint64(file.Size)}); err != nil {
+						if errors.Is(err, projectErrors.ErrNotFound) {
+							return fiber.ErrNotFound
+						}
+						if errors.Is(err, projectErrors.ErrFileToBig) {
+							return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("too big file (max %d) bytes", config.Config.MaxFileSize))
+						}
+						if errors.Is(err, projectErrors.ErrBadName) {
+							return fiber.NewError(fiber.StatusBadRequest, "bad file name")
+						}
+						log.Error(err)
+						return fiber.ErrInternalServerError
 					}
-					if errors.Is(err, projectErrors.ErrBadName) {
-						return fiber.NewError(fiber.StatusBadRequest, "bad file name")
-					}
-					log.Error(err)
-					return fiber.ErrInternalServerError
-				}
-				return nil
-			}()
-			if err != nil {
-				return err
+					return nil
+				})
+			}
+			if doBrake {
+				break
 			}
 		}
-		return nil
+		return group.Wait()
 	}
 }
 
@@ -233,6 +247,9 @@ func ImportFiles(s Services) fiber.Handler {
 		if len(files) == 0 {
 			return fiber.ErrBadRequest
 		}
+		if !strings.HasSuffix(files[0].Filename, ".zip") {
+			return fiber.NewError(fiber.StatusBadRequest, "Only zip archives accepted")
+		}
 		src, err := files[0].Open()
 		if err != nil {
 			return fiber.ErrInternalServerError
@@ -247,7 +264,7 @@ func ImportFiles(s Services) fiber.Handler {
 		if err != nil {
 			return fiber.ErrInternalServerError
 		}
-		err = s.Data.ImportAllFilesFromArchive(bytes)
+		err = s.Data.ImportAllFilesFromZipArchive(bytes)
 		if err != nil {
 			return err
 		}

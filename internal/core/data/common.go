@@ -3,7 +3,6 @@ package data
 import (
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	projectErrors "github.com/KalashnikovProjects/WebButtonCommandRun/internal/errors"
-	"io"
 	"strings"
 )
 
@@ -34,7 +33,11 @@ type FilesRepo interface {
 }
 
 type Filesystem interface {
-	// TODO
+	SaveFile(fileId uint, bytes []byte) error
+	GetFileData(fileId uint) ([]byte, error)
+	DeleteFile(fileId uint) error
+	ClearFiles() error
+	ImportFilesFromZipArchive(data []byte) ([]FileData, error)
 }
 
 type service struct {
@@ -52,7 +55,7 @@ type Service interface {
 	GetCommand(commandId uint) (entities.Command, error)
 	CommandExists(commandId uint) (bool, error)
 
-	AppendFile(commandID uint, file io.Reader, data FileData) error
+	AppendFile(commandID uint, fileBytes []byte, data FileParams) error
 	DeleteFile(commandId, fileId uint) error
 	PatchFile(commandId, fileId uint, newFile entities.EmbeddedFile) error
 	PutFile(commandId, fileId uint, newFile entities.EmbeddedFile) error
@@ -62,7 +65,7 @@ type Service interface {
 	DownloadFile(commandId, fileId uint) (entities.EmbeddedFile, []byte, error)
 	DownloadCommandFilesInArchive(commandId uint) ([]byte, error)
 	DownloadAllFilesInArchive() ([]byte, error)
-	ImportAllFilesFromArchive(data []byte) error
+	ImportAllFilesFromZipArchive(data []byte) error
 	GetUserConfig() (entities.UserConfig, error)
 	SetUserConfig(newConfig entities.UserConfig) error
 }
