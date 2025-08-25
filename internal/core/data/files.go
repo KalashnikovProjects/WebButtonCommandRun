@@ -127,6 +127,9 @@ func (s service) GetAllFilesList() ([]entities.EmbeddedFile, error) {
 
 func (s service) DownloadFile(commandId, fileId uint) (entities.EmbeddedFile, []byte, error) {
 	fileData, err := s.GetFile(commandId, fileId)
+	if err != nil {
+		return entities.EmbeddedFile{}, nil, err
+	}
 	data, err := s.filesystem.GetFileData(fileId)
 	if err != nil {
 		return entities.EmbeddedFile{}, nil, err

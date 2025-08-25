@@ -9,6 +9,7 @@ require (
 	github.com/gofiber/fiber/v2 v2.52.9
 	github.com/iamacarpet/go-winpty v1.0.4
 	github.com/joho/godotenv v1.5.1
+	golang.org/x/sync v0.16.0
 	gorm.io/driver/sqlite v1.6.0
 	gorm.io/gorm v1.30.1
 )
@@ -32,7 +33,6 @@ require (
 	github.com/valyala/fasthttp v1.52.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
 	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 )
