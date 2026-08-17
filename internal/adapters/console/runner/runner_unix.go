@@ -1,6 +1,6 @@
 //go:build !windows
 
-package console
+package runner
 
 import (
 	"fmt"
@@ -21,7 +21,7 @@ type unixCommand struct {
 type Runner struct {
 }
 
-func NewRunner() *Runner {
+func New() *Runner {
 	return &Runner{}
 }
 

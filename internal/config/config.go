@@ -14,7 +14,6 @@ import (
 )
 
 var portFlag int
-var flagsInited bool
 
 type StructOfConfig struct {
 	PORT                   int
@@ -25,6 +24,7 @@ type StructOfConfig struct {
 	MaxFileSize            int64 // in bytes, for no restrict <=0
 	WebsocketWriteInterval time.Duration
 	DefaultCommandRunDir   string
+	OpenURLInBrowser       bool
 }
 
 var Config *StructOfConfig
@@ -45,14 +45,20 @@ func GetHomeDir() string {
 	return usr.HomeDir
 }
 
-func InitConfigs(rootDir string) error {
-	if !flagsInited {
-		flag.IntVar(&portFlag, "port", -1, "port which the server will listen")
-		flagsInited = true
+func flagParse(config *StructOfConfig) {
+	if flag.Parsed() {
+		return
 	}
+	flag.IntVar(&portFlag, "port", -1, "port which the server will listen")
+	flag.BoolVar(&config.OpenURLInBrowser, "browser", false, "open url of ui in default browser")
 	flag.Parse()
+}
+
+func InitConfigs(rootDir string) error {
 	var err error
 	Config = &StructOfConfig{}
+
+	flagParse(Config)
 	envFilename, ok := os.LookupEnv("ENV_FILE")
 	if ok {
 		if err := godotenv.Load(filepath.Join(rootDir, envFilename)); err != nil {
@@ -76,7 +82,7 @@ func InitConfigs(rootDir string) error {
 	} else {
 		Config.PORT = portFlag
 	}
-	Config.LogLevel = log.Level(map[string]int{"trace": 0, "debug": 1, "info": 2, "warn": 3, "error": 4, "fatal": 5, "panic": 6}[os.Getenv("LogLevel")])
+	Config.LogLevel = log.Level(map[string]int{"": 2, "trace": 0, "debug": 1, "info": 2, "warn": 3, "error": 4, "fatal": 5, "panic": 6}[os.Getenv("LOG_LEVEL")])
 	Config.MaxFileSize = -1
 	Config.WebsocketWriteInterval = time.Millisecond * 50
 	Config.DefaultCommandRunDir = GetHomeDir()

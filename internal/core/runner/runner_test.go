@@ -3,7 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/console"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/console/runner"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/storage/filesystem"
 	"os"
 	"os/exec"
@@ -40,7 +40,7 @@ func TestRunCommand_Success(t *testing.T) {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	runnerAdapter := console.NewRunner()
+	runnerAdapter := runner.New()
 	runnerService := NewService(runnerAdapter)
 	filesystemAdapter, err := filesystem.Connect()
 	if err != nil {
@@ -95,7 +95,7 @@ func TestRunCommand_InvalidCommand(t *testing.T) {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	runnerAdapter := console.NewRunner()
+	runnerAdapter := runner.New()
 	runnerService := NewService(runnerAdapter)
 	filesystemAdapter, err := filesystem.Connect()
 	if err != nil {
@@ -149,7 +149,7 @@ func TestRunCommand_ContextCancel(t *testing.T) {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	runnerAdapter := console.NewRunner()
+	runnerAdapter := runner.New()
 	runnerService := NewService(runnerAdapter)
 	filesystemAdapter, err := filesystem.Connect()
 	if err != nil {
@@ -203,7 +203,7 @@ func TestRunCommand_PythonInteractive(t *testing.T) {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	runnerAdapter := console.NewRunner()
+	runnerAdapter := runner.New()
 	runnerService := NewService(runnerAdapter)
 	filesystemAdapter, err := filesystem.Connect()
 	if err != nil {
@@ -275,7 +275,7 @@ func TestRunCommand_EditFile(t *testing.T) {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	runnerAdapter := console.NewRunner()
+	runnerAdapter := runner.New()
 	runnerService := NewService(runnerAdapter)
 	filesystemAdapter, err := filesystem.Connect()
 	if err != nil {
@@ -359,7 +359,7 @@ func TestRunCommand_ExecutionDir(t *testing.T) {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	runnerAdapter := console.NewRunner()
+	runnerAdapter := runner.New()
 	runnerService := NewService(runnerAdapter)
 	filesystemAdapter, err := filesystem.Connect()
 	if err != nil {
@@ -422,7 +422,7 @@ func TestRunCommand_WithFile(t *testing.T) {
 		t.Fatalf("Cant create db: %v", err)
 	}
 	defer func() { _ = db.Close() }()
-	runnerAdapter := console.NewRunner()
+	runnerAdapter := runner.New()
 	runnerService := NewService(runnerAdapter)
 	filesystemAdapter, err := filesystem.Connect()
 	if err != nil {
