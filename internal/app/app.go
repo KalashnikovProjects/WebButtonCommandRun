@@ -19,14 +19,15 @@ import (
 )
 
 func Run() {
-	err := config.InitConfigs("./../")
+	err := config.InitConfigs("./")
 	cfg := config.Config
-	filesDirPath := filepath.Join(cfg.DataFolderPath, "files")
+	dataFolderPath := filepath.Join(cfg.RootDir, "data")
+	filesDirPath := filepath.Join(dataFolderPath, "files")
 	ptyDirPath := filepath.Join(cfg.RootDir, "pty")
 	if err != nil {
 		log.Fatalw("Error while init configs", "error:", err)
 	}
-	dbAdapter, err := database.Connect(cfg.DataFolderPath)
+	dbAdapter, err := database.Connect(dataFolderPath)
 	if err != nil {
 		log.Fatalw("Error while connecting to storage", "error:", err)
 	}

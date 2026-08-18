@@ -19,8 +19,7 @@ type StructOfConfig struct {
 	RootDir                string
 	LogLevel               log.Level
 	Console                string // sh or cmd
-	DataFolderPath         string
-	MaxFileSize            int64 // in bytes, for no restrict <=0
+	MaxFileSize            int64  // in bytes, for no restrict <=0
 	WebsocketWriteInterval time.Duration
 	DefaultCommandRunDir   string
 	OpenURLInBrowser       bool
@@ -50,7 +49,6 @@ func InitConfigs(rootDir string) error {
 	}
 
 	Config.RootDir = rootDir
-	Config.DataFolderPath = filepath.Join(Config.RootDir, "data")
 
 	if portFlag == -1 {
 		port, ok := os.LookupEnv("PORT")
