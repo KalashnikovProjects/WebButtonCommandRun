@@ -23,8 +23,8 @@ type Runner struct {
 }
 
 func New(
-	console string,
 	ptyDir string,
+	console string,
 ) *Runner {
 	return &Runner{
 		console: console,
