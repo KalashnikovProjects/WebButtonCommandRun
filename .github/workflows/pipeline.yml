@@ -16,29 +16,29 @@ jobs:
       contents: read
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v7
+      - name: Checkout code
+        uses: actions/checkout@v7
 
-    - name: Set up Go ${{ env.GO_VERSION }}
-      uses: actions/setup-go@v7
-      with:
-        go-version: ${{ env.GO_VERSION }}
+      - name: Set up Go ${{ env.GO_VERSION }}
+        uses: actions/setup-go@v7
+        with:
+          go-version: ${{ env.GO_VERSION }}
 
-    - name: Cache Go modules
-      uses: actions/cache@v6
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-${{ env.GO_VERSION }}
+      - name: Cache Go modules
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ env.GO_VERSION }}-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-${{ env.GO_VERSION }}
 
-    - name: Download dependencies
-      run: go mod download
+      - name: Download dependencies
+        run: go mod download
 
-    - name: Run tests
-      run: make test-race test-coverage lint
+      - name: Run tests
+        run: make test-race test-coverage lint
 
 
   security:
@@ -93,49 +93,49 @@ jobs:
           - os: linux
             arch: amd64
             runner: ubuntu-22.04
-            cc: "zig cc -target x86_64-linux-gnu"
+            make-function: build-linux
             binary: wbcr-linux
             package: wbcr-linux.tar.gz
           - os: linux
             arch: 386
             runner: ubuntu-22.04
-            cc: "zig cc -target x86-linux-gnu"
+            make-function: build-linux32
             binary: wbcr-linux32
             package: wbcr-linux32.tar.gz
           - os: linux
             arch: arm
             runner: ubuntu-22.04
-            cc: "zig cc -target arm-linux-gnueabihf"
+            make-function: build-linux-arm
             binary: wbcr-linux-arm
             package: wbcr-linux-arm.tar.gz
           - os: linux
             arch: arm64
             runner: ubuntu-22.04
-            cc: "zig cc -target aarch64-linux-gnu"
+            make-function: build-linux-arm64
             binary: wbcr-linux-arm64
             package: wbcr-linux-arm64.tar.gz
           - os: windows
             arch: amd64
             runner: ubuntu-22.04
-            cc: "zig cc -target x86_64-windows-gnu"
+            make-function: build-windows
             binary: wbcr.exe
             package: wbcr-windows.zip
           - os: windows
             arch: 386
             runner: ubuntu-22.04
-            cc: "zig cc -target x86-windows-gnu"
+            make-function: build-windows32
             binary: wbcr32.exe
             package: wbcr-windows32.zip
           - os: macos
             arch: amd64
             runner: macos-latest
-            cc: ""
+            make-function: build-macos
             binary: wbcr-macos
             package: wbcr-macos.zip
           - os: macos
             arch: arm64
             runner: macos-latest
-            cc: ""
+            make-function: build-macos-arm
             binary: wbcr-macos-arm
             package: wbcr-macos-arm.zip
     steps:
@@ -158,17 +158,17 @@ jobs:
 
       - name: Build binary
         run: |
-          echo "Building ${{ matrix.binary }} for ${{ matrix.os }}/${matrix.arch}"
+          echo "Building ${{ matrix.binary }} for ${{ matrix.os }}/${{matrix.arch}}"
           if [ "${{ matrix.os }}" != "macos" ]; then
-            make CC_LINUX_AMD64="${{ matrix.cc }}" \
-                 CC_LINUX_386="${{ matrix.cc }}" \
-                 CC_LINUX_ARM="${{ matrix.cc }}" \
-                 CC_LINUX_ARM64="${{ matrix.cc }}" \
-                 CC_WINDOWS_AMD64="${{ matrix.cc }}" \
-                 CC_WINDOWS_386="${{ matrix.cc }}" \
-                 build-${{ matrix.binary }}
+            make CC_LINUX_AMD64="zig cc -target x86_64-linux-gnu" \
+                 CC_LINUX_386="zig cc -target x86-linux-gnu" \
+                 CC_LINUX_ARM="zig cc -target arm-linux-gnueabihf" \
+                 CC_LINUX_ARM64="zig cc -target aarch64-linux-gnu" \
+                 CC_WINDOWS_AMD64="zig cc -target x86_64-windows-gnu" \
+                 CC_WINDOWS_386="zig cc -target x86-windows-gnu" \
+                 ${{ matrix.make-function }}
           else
-            make build-${{ matrix.binary }}
+            make ${{ matrix.make-function }}
           fi
 
       - name: Package artifact
@@ -206,18 +206,20 @@ jobs:
 
       - name: Download all artifacts
         uses: actions/download-artifact@v8
+        with:
+          merge-multiple: true
 
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            builds/wbcr-windows.zip
-            builds/wbcr-windows32.zip
-            builds/wbcr-linux.tar.gz
-            builds/wbcr-linux32.tar.gz
-            builds/wbcr-linux-arm.tar.gz
-            builds/wbcr-linux-arm64.tar.gz
-            builds-macos/wbcr-macos.zip
-            builds-macos/wbcr-macos-arm.zip
+            wbcr-windows.zip
+            wbcr-windows32.zip
+            wbcr-linux.tar.gz
+            wbcr-linux32.tar.gz
+            wbcr-linux-arm.tar.gz
+            wbcr-linux-arm64.tar.gz
+            wbcr-macos.zip
+            wbcr-macos-arm.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
