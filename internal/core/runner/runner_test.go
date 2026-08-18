@@ -366,7 +366,8 @@ func TestRunCommand_EditFile(t *testing.T) {
 	if out != "Hello from embedded file\r" {
 		t.Fatalf("unexpected output: %q", out)
 	}
-	// ensure file was cleaned up from workDir
+	time.Sleep(500 * time.Millisecond)
+	// ensure file was cleaned up from commandRunDir
 	if _, err := os.Stat(filepath.Join(commandRunDir, fileName)); !os.IsNotExist(err) {
 		t.Fatalf("embedded file was not removed from workDir: %v", err)
 	}
