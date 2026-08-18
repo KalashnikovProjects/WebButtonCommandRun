@@ -4,7 +4,6 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/gofiber/fiber/v2/log"
 	"io"
@@ -13,24 +12,25 @@ import (
 	"strings"
 )
 
-type Adapter struct{}
+type Adapter struct {
+	filesDirPath string
+}
 
-func Connect() (Adapter, error) {
-	err := os.MkdirAll(config.Config.DataFolderPath, 0750)
+func Connect(filesDirPath string) (Adapter, error) {
+	err := os.MkdirAll(filesDirPath, 0750)
 
 	if err != nil {
 		return Adapter{}, err
 	}
-	return Adapter{}, nil
+	return Adapter{filesDirPath: filesDirPath}, nil
 }
 
 func (a Adapter) SaveFile(fileId uint, bytes []byte) error {
-	filesDir := filepath.Join(config.Config.DataFolderPath, "files")
-	if err := os.MkdirAll(filesDir, 0750); err != nil {
+	if err := os.MkdirAll(a.filesDirPath, 0750); err != nil {
 		return err
 	}
 
-	filePath := filepath.Join(filesDir, fmt.Sprintf("%d", fileId))
+	filePath := filepath.Join(a.filesDirPath, fmt.Sprintf("%d", fileId))
 
 	dst, err := os.Create(filePath)
 	if err != nil {
@@ -51,11 +51,11 @@ func (a Adapter) SaveFile(fileId uint, bytes []byte) error {
 }
 
 func (a Adapter) ClearFiles() error {
-	err := os.RemoveAll(filepath.Join(config.Config.DataFolderPath, "files"))
+	err := os.RemoveAll(a.filesDirPath)
 	if err != nil {
 		return err
 	}
-	err = os.MkdirAll(filepath.Join(config.Config.DataFolderPath, "files"), 0750)
+	err = os.MkdirAll(a.filesDirPath, 0750)
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func (a Adapter) ClearFiles() error {
 }
 
 func (a Adapter) GetFileData(fileId uint) ([]byte, error) {
-	filePath := filepath.Join(config.Config.DataFolderPath, "files", fmt.Sprintf("%d", fileId))
+	filePath := filepath.Join(a.filesDirPath, fmt.Sprintf("%d", fileId))
 	file, err := os.Open(filePath)
 	if err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (a Adapter) GetFileData(fileId uint) ([]byte, error) {
 }
 
 func (a Adapter) DeleteFile(fileId uint) error {
-	filePath := filepath.Join(config.Config.DataFolderPath, "files", fmt.Sprintf("%d", fileId))
+	filePath := filepath.Join(a.filesDirPath, fmt.Sprintf("%d", fileId))
 	err := os.Remove(filePath)
 	if err != nil {
 		return err

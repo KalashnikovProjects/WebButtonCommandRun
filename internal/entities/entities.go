@@ -1,7 +1,6 @@
 package entities
 
 import (
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"io"
 )
 
@@ -35,20 +34,9 @@ type EmbeddedFileWithCommandInfo struct {
 	Command Command `json:"command" gorm:"foreignKey:CommandID;references:ID;belongsTo:Command"`
 }
 
-func CommandDefaults() Command {
-	return Command{
-		Dir: config.Config.DefaultCommandRunDir,
-	}
-}
-
-func EmbeddedFileDefaults() EmbeddedFile {
-	return EmbeddedFile{}
-}
-
-func UserConfigDefaults() UserConfig {
-	return UserConfig{
-		UsingConsole: config.Config.Console,
-	}
+type CommandInputOutput struct {
+	Input  chan<- string
+	Output <-chan string
 }
 
 type RunningCommand interface {

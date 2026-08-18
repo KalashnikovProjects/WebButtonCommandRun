@@ -2,18 +2,15 @@ package database
 
 import (
 	"fmt"
+	"github.com/gofiber/fiber/v2/log"
 	"testing"
 
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/testutils"
 )
 
 func TestAppendFile(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
 	testCases := []struct {
 		name        string
@@ -40,12 +37,10 @@ func TestAppendFile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var db DB
 			tempDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
-			config.Config.DataFolderPath = tempDir
-			db, err = Connect()
+			db, err := Connect(tempDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -81,10 +76,7 @@ func TestAppendFile(t *testing.T) {
 }
 
 func TestUpdateFile(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
 	testCases := []struct {
 		name        string
@@ -115,12 +107,10 @@ func TestUpdateFile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var db DB
 			tempDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
-			config.Config.DataFolderPath = tempDir
-			db, err = Connect()
+			db, err := Connect(tempDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -154,10 +144,7 @@ func TestUpdateFile(t *testing.T) {
 }
 
 func TestPatchFile(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
 	testCases := []struct {
 		name        string
@@ -195,12 +182,10 @@ func TestPatchFile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var db DB
 			tempDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
-			config.Config.DataFolderPath = tempDir
-			db, err = Connect()
+			db, err := Connect(tempDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -234,10 +219,7 @@ func TestPatchFile(t *testing.T) {
 }
 
 func TestDeleteFile(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
 	testCases := []struct {
 		name        string
@@ -261,12 +243,10 @@ func TestDeleteFile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var db DB
 			tempDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
-			config.Config.DataFolderPath = tempDir
-			db, err = Connect()
+			db, err := Connect(tempDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -300,10 +280,7 @@ func TestDeleteFile(t *testing.T) {
 }
 
 func TestGetFile(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
 	testCases := []struct {
 		name        string
@@ -327,12 +304,10 @@ func TestGetFile(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var db DB
 			tempDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
-			config.Config.DataFolderPath = tempDir
-			db, err = Connect()
+			db, err := Connect(tempDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -366,10 +341,7 @@ func TestGetFile(t *testing.T) {
 }
 
 func TestGetCommandFiles(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
 	testCases := []struct {
 		name        string
@@ -393,12 +365,10 @@ func TestGetCommandFiles(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var db DB
 			tempDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
-			config.Config.DataFolderPath = tempDir
-			db, err = Connect()
+			db, err := Connect(tempDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -439,17 +409,13 @@ func TestGetCommandFiles(t *testing.T) {
 }
 
 func TestGetAllFiles(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
 	var db DB
 	tempDir, cleanup := testutils.CreateTempDataFolder(t)
 	defer cleanup()
 
-	config.Config.DataFolderPath = tempDir
-	db, err = Connect()
+	db, err := Connect(tempDir)
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
@@ -496,10 +462,7 @@ func TestGetAllFiles(t *testing.T) {
 }
 
 func TestSetAllFiles(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
 	testCases := []struct {
 		name        string
@@ -524,12 +487,10 @@ func TestSetAllFiles(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var db DB
 			tempDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
-			config.Config.DataFolderPath = tempDir
-			db, err = Connect()
+			db, err := Connect(tempDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -562,17 +523,12 @@ func TestSetAllFiles(t *testing.T) {
 }
 
 func TestDeleteAllFiles(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
-	var db DB
 	tempDir, cleanup := testutils.CreateTempDataFolder(t)
 	defer cleanup()
 
-	config.Config.DataFolderPath = tempDir
-	db, err = Connect()
+	db, err := Connect(tempDir)
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
@@ -621,10 +577,7 @@ func TestDeleteAllFiles(t *testing.T) {
 }
 
 func TestSetCommandFiles(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
 	testCases := []struct {
 		name        string
@@ -651,12 +604,10 @@ func TestSetCommandFiles(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			var db DB
 			tempDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
 
-			config.Config.DataFolderPath = tempDir
-			db, err = Connect()
+			db, err := Connect(tempDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}

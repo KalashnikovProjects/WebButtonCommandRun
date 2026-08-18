@@ -1,27 +1,27 @@
-package data
+package commands
 
 import (
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/storage/database"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/storage/filesystem"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/core/userconfig"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/utils"
+	"github.com/gofiber/fiber/v2/log"
+	"path/filepath"
 	"reflect"
 	"testing"
 
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/testutils"
 )
 
 func TestAppendCommand(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
-
+	log.SetLevel(0)
+	console := utils.DetectDefaultConsole()
 	testCases := []struct {
 		name           string
 		initialConfig  entities.UserConfig
 		commandToAdd   entities.Command
-		expectedConfig entities.UserConfig
+		expectedConfig *entities.UserConfig
 		expectError    bool
 	}{
 		{
@@ -34,8 +34,8 @@ func TestAppendCommand(t *testing.T) {
 				Name:    "Test Command",
 				Command: "echo hello",
 			},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{
 						ID:      1,
@@ -61,8 +61,8 @@ func TestAppendCommand(t *testing.T) {
 				Name:    "New Command",
 				Command: "echo new",
 			},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{
 						ID:      1,
@@ -84,9 +84,11 @@ func TestAppendCommand(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
+			commandRunDir := filepath.Join(tmpDir, "command_run")
+			dataDir := filepath.Join(tmpDir, "data")
+			filesDir := filepath.Join(dataDir, "files123")
 
-			config.Config.DataFolderPath = tmpDir
-			db, err := database.Connect()
+			db, err := database.Connect(dataDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -96,25 +98,26 @@ func TestAppendCommand(t *testing.T) {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			filesystemAdaptor, err := filesystem.Connect()
+			filesystemAdapter, err := filesystem.Connect(filesDir)
 			if err != nil {
 				t.Fatalf("Cant set connect filesystem: %v", err)
 			}
-			dataService := NewService(db, db, filesystemAdaptor)
+			commandsService := NewService(db, commandRunDir)
+			userConfigService := userconfig.NewService(db, db, filesystemAdapter, utils.DetectDefaultConsole())
 
-			err = dataService.SetUserConfig(tc.initialConfig)
+			err = userConfigService.SetUserConfig(&tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			err = dataService.AppendCommand(tc.commandToAdd)
+			err = commandsService.AppendCommand(&tc.commandToAdd)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			resultConfig, err := dataService.GetUserConfig()
+			resultConfig, err := userConfigService.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Cant get result config: %v", err)
 			}
@@ -129,16 +132,14 @@ func TestAppendCommand(t *testing.T) {
 }
 
 func TestDeleteCommand(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
+	console := utils.DetectDefaultConsole()
 
 	testCases := []struct {
 		name           string
 		initialConfig  entities.UserConfig
 		deleteId       uint
-		expectedConfig entities.UserConfig
+		expectedConfig *entities.UserConfig
 		expectError    bool
 	}{
 		{
@@ -152,8 +153,8 @@ func TestDeleteCommand(t *testing.T) {
 				},
 			},
 			deleteId: 1,
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 2, Name: "Second", Command: "echo second"},
 					{ID: 3, Name: "Third", Command: "echo third"},
@@ -172,8 +173,8 @@ func TestDeleteCommand(t *testing.T) {
 				},
 			},
 			deleteId: 2,
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 3, Name: "Third", Command: "echo third"},
@@ -191,8 +192,8 @@ func TestDeleteCommand(t *testing.T) {
 				},
 			},
 			deleteId: 2,
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 				},
@@ -205,12 +206,9 @@ func TestDeleteCommand(t *testing.T) {
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
-			deleteId: 1,
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
-				Commands:     []entities.Command{},
-			},
-			expectError: true,
+			deleteId:       1,
+			expectedConfig: nil,
+			expectError:    true,
 		},
 	}
 
@@ -218,9 +216,11 @@ func TestDeleteCommand(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
+			commandRunDir := filepath.Join(tmpDir, "command_run")
+			dataDir := filepath.Join(tmpDir, "data")
+			filesDir := filepath.Join(dataDir, "files123")
 
-			config.Config.DataFolderPath = tmpDir
-			db, err := database.Connect()
+			db, err := database.Connect(dataDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -230,25 +230,26 @@ func TestDeleteCommand(t *testing.T) {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			filesystemAdaptor, err := filesystem.Connect()
+			filesystemAdapter, err := filesystem.Connect(filesDir)
 			if err != nil {
 				t.Fatalf("Cant set connect filesystem: %v", err)
 			}
-			dataService := NewService(db, db, filesystemAdaptor)
+			commandsService := NewService(db, commandRunDir)
+			userConfigService := userconfig.NewService(db, db, filesystemAdapter, utils.DetectDefaultConsole())
 
-			err = dataService.SetUserConfig(tc.initialConfig)
+			err = userConfigService.SetUserConfig(&tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			err = dataService.DeleteCommand(tc.deleteId)
+			err = commandsService.DeleteCommand(tc.deleteId)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			resultConfig, err := dataService.GetUserConfig()
+			resultConfig, err := userConfigService.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Cant get result config: %v", err)
 			}
@@ -262,10 +263,7 @@ func TestDeleteCommand(t *testing.T) {
 }
 
 func TestGetCommandsList(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
 	testCases := []struct {
 		name           string
@@ -300,9 +298,11 @@ func TestGetCommandsList(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
+			commandRunDir := filepath.Join(tmpDir, "command_run")
+			dataDir := filepath.Join(tmpDir, "data")
+			filesDir := filepath.Join(dataDir, "files123")
 
-			config.Config.DataFolderPath = tmpDir
-			db, err := database.Connect()
+			db, err := database.Connect(dataDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -312,17 +312,18 @@ func TestGetCommandsList(t *testing.T) {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			filesystemAdaptor, err := filesystem.Connect()
+			filesystemAdapter, err := filesystem.Connect(filesDir)
 			if err != nil {
 				t.Fatalf("Cant set connect filesystem: %v", err)
 			}
-			dataService := NewService(db, db, filesystemAdaptor)
+			commandsService := NewService(db, commandRunDir)
+			userConfigService := userconfig.NewService(db, db, filesystemAdapter, utils.DetectDefaultConsole())
 
-			err = dataService.SetUserConfig(tc.initialConfig)
+			err = userConfigService.SetUserConfig(&tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
-			result, err := dataService.GetCommandsList()
+			result, err := commandsService.GetCommandsList()
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
@@ -334,16 +335,13 @@ func TestGetCommandsList(t *testing.T) {
 }
 
 func TestGetCommand(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
 
 	testCases := []struct {
 		name           string
 		initialConfig  entities.UserConfig
 		commandId      uint
-		expectedResult entities.Command
+		expectedResult *entities.Command
 		expectError    bool
 	}{
 		{
@@ -356,7 +354,7 @@ func TestGetCommand(t *testing.T) {
 				},
 			},
 			commandId:      1,
-			expectedResult: entities.Command{ID: 1, Name: "First", Command: "echo first"},
+			expectedResult: &entities.Command{ID: 1, Name: "First", Command: "echo first"},
 			expectError:    false,
 		},
 		{
@@ -369,7 +367,7 @@ func TestGetCommand(t *testing.T) {
 				},
 			},
 			commandId:      2,
-			expectedResult: entities.Command{ID: 2, Name: "Second", Command: "echo second"},
+			expectedResult: &entities.Command{ID: 2, Name: "Second", Command: "echo second"},
 			expectError:    false,
 		},
 		{
@@ -382,7 +380,7 @@ func TestGetCommand(t *testing.T) {
 				},
 			},
 			commandId:      3,
-			expectedResult: entities.Command{},
+			expectedResult: nil,
 			expectError:    true,
 		},
 		{
@@ -392,7 +390,7 @@ func TestGetCommand(t *testing.T) {
 				Commands:     []entities.Command{},
 			},
 			commandId:      1,
-			expectedResult: entities.Command{},
+			expectedResult: nil,
 			expectError:    true,
 		},
 	}
@@ -401,9 +399,11 @@ func TestGetCommand(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
+			commandRunDir := filepath.Join(tmpDir, "command_run")
+			dataDir := filepath.Join(tmpDir, "data")
+			filesDir := filepath.Join(dataDir, "files123")
 
-			config.Config.DataFolderPath = tmpDir
-			db, err := database.Connect()
+			db, err := database.Connect(dataDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -413,18 +413,19 @@ func TestGetCommand(t *testing.T) {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			filesystemAdaptor, err := filesystem.Connect()
+			filesystemAdapter, err := filesystem.Connect(filesDir)
 			if err != nil {
 				t.Fatalf("Cant set connect filesystem: %v", err)
 			}
-			dataService := NewService(db, db, filesystemAdaptor)
+			commandsService := NewService(db, commandRunDir)
+			userConfigService := userconfig.NewService(db, db, filesystemAdapter, utils.DetectDefaultConsole())
 
-			err = dataService.SetUserConfig(tc.initialConfig)
+			err = userConfigService.SetUserConfig(&tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			result, err := dataService.GetCommand(tc.commandId)
+			result, err := commandsService.GetCommand(tc.commandId)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
@@ -440,17 +441,15 @@ func TestGetCommand(t *testing.T) {
 }
 
 func TestPutCommand(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
+	console := utils.DetectDefaultConsole()
 
 	testCases := []struct {
 		name           string
 		initialConfig  entities.UserConfig
 		commandId      uint
 		newCommand     entities.Command
-		expectedConfig entities.UserConfig
+		expectedConfig *entities.UserConfig
 		expectError    bool
 	}{
 		{
@@ -464,8 +463,8 @@ func TestPutCommand(t *testing.T) {
 			},
 			commandId:  1,
 			newCommand: entities.Command{Name: "Updated First", Command: "echo updated"},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "Updated First", Command: "echo updated"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -484,8 +483,8 @@ func TestPutCommand(t *testing.T) {
 			},
 			commandId:  2,
 			newCommand: entities.Command{Name: "Updated Second", Command: "echo updated second"},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Updated Second", Command: "echo updated second"},
@@ -504,8 +503,8 @@ func TestPutCommand(t *testing.T) {
 			},
 			commandId:  3,
 			newCommand: entities.Command{Name: "Updated Second", Command: "echo updated second"},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -519,13 +518,10 @@ func TestPutCommand(t *testing.T) {
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
-			commandId:  1,
-			newCommand: entities.Command{Name: "New", Command: "echo new"},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
-				Commands:     []entities.Command{},
-			},
-			expectError: true,
+			commandId:      1,
+			newCommand:     entities.Command{Name: "New", Command: "echo new"},
+			expectedConfig: nil,
+			expectError:    true,
 		},
 	}
 
@@ -533,9 +529,11 @@ func TestPutCommand(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
+			commandRunDir := filepath.Join(tmpDir, "command_run")
+			dataDir := filepath.Join(tmpDir, "data")
+			filesDir := filepath.Join(dataDir, "files123")
 
-			config.Config.DataFolderPath = tmpDir
-			db, err := database.Connect()
+			db, err := database.Connect(dataDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -545,25 +543,26 @@ func TestPutCommand(t *testing.T) {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			filesystemAdaptor, err := filesystem.Connect()
+			filesystemAdapter, err := filesystem.Connect(filesDir)
 			if err != nil {
 				t.Fatalf("Cant set connect filesystem: %v", err)
 			}
-			dataService := NewService(db, db, filesystemAdaptor)
+			commandsService := NewService(db, commandRunDir)
+			userConfigService := userconfig.NewService(db, db, filesystemAdapter, utils.DetectDefaultConsole())
 
-			err = dataService.SetUserConfig(tc.initialConfig)
+			err = userConfigService.SetUserConfig(&tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			err = dataService.PutCommand(tc.commandId, tc.newCommand)
+			err = commandsService.PutCommand(tc.commandId, &tc.newCommand)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			resultConfig, err := dataService.GetUserConfig()
+			resultConfig, err := userConfigService.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Cant get result config: %v", err)
 			}
@@ -577,17 +576,15 @@ func TestPutCommand(t *testing.T) {
 }
 
 func TestPatchCommand(t *testing.T) {
-	err := config.InitConfigs("../../..")
-	if err != nil {
-		t.Fatalf("Cant init configs: %v", err)
-	}
+	log.SetLevel(0)
+	console := utils.DetectDefaultConsole()
 
 	testCases := []struct {
 		name           string
 		initialConfig  entities.UserConfig
 		commandId      uint
 		newCommand     entities.Command
-		expectedConfig entities.UserConfig
+		expectedConfig *entities.UserConfig
 		expectError    bool
 	}{
 		{
@@ -601,8 +598,8 @@ func TestPatchCommand(t *testing.T) {
 			},
 			commandId:  1,
 			newCommand: entities.Command{Name: "Updated First", Command: "echo updated"},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "Updated First", Command: "echo updated"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -621,8 +618,8 @@ func TestPatchCommand(t *testing.T) {
 			},
 			commandId:  2,
 			newCommand: entities.Command{Name: "Updated Second"},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Updated Second", Command: "echo second"},
@@ -641,8 +638,8 @@ func TestPatchCommand(t *testing.T) {
 			},
 			commandId:  2,
 			newCommand: entities.Command{Command: "echo updated second"},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo updated second"},
@@ -661,8 +658,8 @@ func TestPatchCommand(t *testing.T) {
 			},
 			commandId:  3,
 			newCommand: entities.Command{Name: "Updated Second", Command: "echo updated second"},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -676,13 +673,10 @@ func TestPatchCommand(t *testing.T) {
 				UsingConsole: "test",
 				Commands:     []entities.Command{},
 			},
-			commandId:  1,
-			newCommand: entities.Command{Name: "New", Command: "echo new"},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
-				Commands:     []entities.Command{},
-			},
-			expectError: true,
+			commandId:      1,
+			newCommand:     entities.Command{Name: "New", Command: "echo new"},
+			expectedConfig: nil,
+			expectError:    true,
 		},
 		{
 			name: "No data no changes",
@@ -695,8 +689,8 @@ func TestPatchCommand(t *testing.T) {
 			},
 			commandId:  2,
 			newCommand: entities.Command{},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -715,8 +709,8 @@ func TestPatchCommand(t *testing.T) {
 			},
 			commandId:  2,
 			newCommand: entities.Command{Name: "Second", Command: "echo second"},
-			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+			expectedConfig: &entities.UserConfig{
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -730,9 +724,11 @@ func TestPatchCommand(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
+			commandRunDir := filepath.Join(tmpDir, "command_run")
+			dataDir := filepath.Join(tmpDir, "data")
+			filesDir := filepath.Join(dataDir, "files123")
 
-			config.Config.DataFolderPath = tmpDir
-			db, err := database.Connect()
+			db, err := database.Connect(dataDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -742,25 +738,26 @@ func TestPatchCommand(t *testing.T) {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			filesystemAdaptor, err := filesystem.Connect()
+			filesystemAdapter, err := filesystem.Connect(filesDir)
 			if err != nil {
 				t.Fatalf("Cant set connect filesystem: %v", err)
 			}
-			dataService := NewService(db, db, filesystemAdaptor)
+			commandsService := NewService(db, commandRunDir)
+			userConfigService := userconfig.NewService(db, db, filesystemAdapter, utils.DetectDefaultConsole())
 
-			err = dataService.SetUserConfig(tc.initialConfig)
+			err = userConfigService.SetUserConfig(&tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			err = dataService.PatchCommand(tc.commandId, tc.newCommand)
+			err = commandsService.PatchCommand(tc.commandId, &tc.newCommand)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			resultConfig, err := dataService.GetUserConfig()
+			resultConfig, err := userConfigService.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Cant get result config: %v", err)
 			}

@@ -4,43 +4,37 @@ import (
 	"bufio"
 	"context"
 	"fmt"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/core/data"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	projectErrors "github.com/KalashnikovProjects/WebButtonCommandRun/internal/errors"
 	"github.com/gofiber/fiber/v2/log"
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 )
 
-type Runner interface {
-	RunCommand(command string, options entities.TerminalOptions) (entities.RunningCommand, error)
+type Service struct {
+	defaultCommandRunDir string
+	filesDirPath         string
+	runner               Runner
+	commands             CommandsRepository
+	files                FilesRepository
 }
 
-type service struct {
-	runner Runner
-}
-
-type Service interface {
-	RunCommand(ctx context.Context, db data.Service, commandId uint, options entities.TerminalOptions) (Command, error)
-}
-
-func NewService(runner Runner) Service {
-	return &service{
-		runner: runner,
+func NewService(defaultCommandRunDir string, filesDirPath string, runner Runner, commandsRepository CommandsRepository, filesRepository FilesRepository) *Service {
+	return &Service{
+		defaultCommandRunDir: defaultCommandRunDir,
+		filesDirPath:         filesDirPath,
+		runner:               runner,
+		commands:             commandsRepository,
+		files:                filesRepository,
 	}
-}
-
-type Command struct {
-	Input  chan<- string
-	Output <-chan string
 }
 
 type deleteCallbackFunction func() error
 
-// prepareFile return function for delete file
-func prepareFile(targetDir string, file entities.EmbeddedFile) (deleteCallbackFunction, error) {
+// prepareFile copy file and return function for delete it
+func (s Service) prepareFile(targetDir string, file entities.EmbeddedFile) (deleteCallbackFunction, error) {
 	targetFileName := filepath.Join(targetDir, file.Name)
 	targetFile, err := os.Create(targetFileName)
 	if err != nil {
@@ -53,7 +47,7 @@ func prepareFile(targetDir string, file entities.EmbeddedFile) (deleteCallbackFu
 		}
 	}(targetFile)
 
-	sourceFile, err := os.Open(filepath.Join(config.Config.DataFolderPath, "files", fmt.Sprintf("%d", file.ID)))
+	sourceFile, err := os.Open(filepath.Join(s.filesDirPath, fmt.Sprintf("%d", file.ID)))
 	if err != nil {
 		return nil, err
 	}
@@ -74,34 +68,34 @@ func prepareFile(targetDir string, file entities.EmbeddedFile) (deleteCallbackFu
 }
 
 // RunCommand return input chan, output chan and error
-func (s service) RunCommand(ctx context.Context, data data.Service, commandId uint, options entities.TerminalOptions) (Command, error) {
-	commandData, err := data.GetCommand(commandId)
+func (s Service) RunCommand(ctx context.Context, commandId uint, options entities.TerminalOptions) (*entities.CommandInputOutput, error) {
+	commandData, err := s.commands.GetCommand(commandId)
 	if err != nil {
-		return Command{}, err
+		return nil, err
 	}
 	if commandData.Command == "" {
-		return Command{}, projectErrors.ErrEmptyCommand
+		return nil, projectErrors.ErrEmptyCommand
 	}
 	if commandData.Dir == "" {
-		options.Dir = config.Config.DefaultCommandRunDir
+		options.Dir = s.defaultCommandRunDir
 	} else {
 		options.Dir = commandData.Dir
 	}
-	embeddedFiles, err := data.GetCommandFilesList(commandId)
+	embeddedFiles, err := s.files.GetCommandFiles(commandId)
 	if err != nil {
-		return Command{}, err
+		return nil, err
 	}
 	var deleteCallbacks []deleteCallbackFunction
 	for _, file := range embeddedFiles {
-		deleteIt, err := prepareFile(options.Dir, file)
+		deleteIt, err := s.prepareFile(options.Dir, file)
 		if err != nil {
-			return Command{}, err
+			return nil, err
 		}
 		deleteCallbacks = append(deleteCallbacks, deleteIt)
 	}
 	processingCommand, err := s.runner.RunCommand(commandData.Command, options)
 	if err != nil {
-		return Command{}, fmt.Errorf("error in RunCommand function: %w", err)
+		return nil, fmt.Errorf("error in RunCommand function: %w", err)
 	}
 
 	inputChan := make(chan string)
@@ -116,9 +110,18 @@ func (s service) RunCommand(ctx context.Context, data data.Service, commandId ui
 		defer cancel()
 		defer func() {
 			for _, f := range deleteCallbacks {
-				if err := f(); err != nil {
+				go func() {
+					var err error
+					for try := range 3 {
+						err = f()
+						if err == nil {
+							return
+						}
+						time.Sleep(time.Duration((try+1)*50) * time.Millisecond) // waiting for finishing command executions, for delete its files
+					}
 					log.Warn(err)
-				}
+				}()
+
 			}
 		}()
 		scanner := bufio.NewScanner(processingCommand.GetReader())
@@ -164,5 +167,5 @@ func (s service) RunCommand(ctx context.Context, data data.Service, commandId ui
 			}
 		}
 	}()
-	return Command{Input: inputChan, Output: outputChan}, nil
+	return &entities.CommandInputOutput{Input: inputChan, Output: outputChan}, nil
 }

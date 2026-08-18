@@ -3,12 +3,11 @@ package config
 import (
 	"flag"
 	"fmt"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/utils"
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/joho/godotenv"
 	"os"
-	"os/user"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"time"
 )
@@ -28,22 +27,6 @@ type StructOfConfig struct {
 }
 
 var Config *StructOfConfig
-
-func DetectDefaultConsole() string {
-	if runtime.GOOS == "windows" {
-		return "cmd"
-	}
-	return "sh"
-}
-
-func GetHomeDir() string {
-	usr, err := user.Current()
-	if err != nil {
-		log.Error("cant get current user", err)
-		return ""
-	}
-	return usr.HomeDir
-}
 
 func flagParse(config *StructOfConfig) {
 	if flag.Parsed() {
@@ -85,13 +68,13 @@ func InitConfigs(rootDir string) error {
 	Config.LogLevel = log.Level(map[string]int{"": 2, "trace": 0, "debug": 1, "info": 2, "warn": 3, "error": 4, "fatal": 5, "panic": 6}[os.Getenv("LOG_LEVEL")])
 	Config.MaxFileSize = -1
 	Config.WebsocketWriteInterval = time.Millisecond * 50
-	Config.DefaultCommandRunDir = GetHomeDir()
+	Config.DefaultCommandRunDir = utils.GetHomeDir()
 	log.SetLevel(Config.LogLevel)
 	console, ok := os.LookupEnv("CONSOLE")
 	if ok {
 		Config.Console = console
 	} else {
-		Config.Console = DetectDefaultConsole()
+		Config.Console = utils.DetectDefaultConsole()
 	}
 
 	return nil

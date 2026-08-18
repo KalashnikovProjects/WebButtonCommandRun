@@ -1,4 +1,4 @@
-package data
+package userconfig
 
 import (
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/storage/database"
@@ -6,6 +6,8 @@ import (
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/testutils"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/utils"
+	"path/filepath"
 	"reflect"
 	"testing"
 )
@@ -15,6 +17,7 @@ func TestGetUserConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
+	console := utils.DetectDefaultConsole()
 
 	testCases := []struct {
 		name           string
@@ -28,7 +31,7 @@ func TestGetUserConfig(t *testing.T) {
 				Commands:     []entities.Command{},
 			},
 			expectedResult: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+				UsingConsole: console,
 				Commands:     []entities.Command{},
 			},
 		},
@@ -42,7 +45,7 @@ func TestGetUserConfig(t *testing.T) {
 				},
 			},
 			expectedResult: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 1, Name: "First", Command: "echo first"},
 					{ID: 2, Name: "Second", Command: "echo second"},
@@ -55,9 +58,10 @@ func TestGetUserConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
+			dataDir := filepath.Join(tmpDir, "data")
+			filesDir := filepath.Join(dataDir, "files123")
 
-			config.Config.DataFolderPath = tmpDir
-			db, err := database.Connect()
+			db, err := database.Connect(dataDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -67,23 +71,23 @@ func TestGetUserConfig(t *testing.T) {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			filesystemAdaptor, err := filesystem.Connect()
+			filesystemAdapter, err := filesystem.Connect(filesDir)
 			if err != nil {
 				t.Fatalf("Cant set connect filesystem: %v", err)
 			}
-			dataService := NewService(db, db, filesystemAdaptor)
+			userConfigService := NewService(db, db, filesystemAdapter, utils.DetectDefaultConsole())
 
-			err = dataService.SetUserConfig(tc.initialConfig)
+			err = userConfigService.SetUserConfig(&tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			result, err := dataService.GetUserConfig()
+			result, err := userConfigService.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			if !reflect.DeepEqual(result, tc.expectedResult) {
-				t.Fatalf("Expected config: %v, got: %v", tc.expectedResult, result)
+			if !reflect.DeepEqual(*result, tc.expectedResult) {
+				t.Fatalf("Expected config: %v, got: %v", tc.expectedResult, *result)
 			}
 		})
 	}
@@ -94,6 +98,7 @@ func TestUpdateUserConfig(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Cant init configs: %v", err)
 	}
+	console := utils.DetectDefaultConsole()
 
 	testCases := []struct {
 		name           string
@@ -118,7 +123,7 @@ func TestUpdateUserConfig(t *testing.T) {
 				},
 			},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+				UsingConsole: console,
 				Commands: []entities.Command{
 					{ID: 2, Name: "New1", Command: "echo new1"},
 					{ID: 3, Name: "New2", Command: "echo new2"},
@@ -139,7 +144,7 @@ func TestUpdateUserConfig(t *testing.T) {
 				Commands:     []entities.Command{},
 			},
 			expectedConfig: entities.UserConfig{
-				UsingConsole: config.Config.Console,
+				UsingConsole: console,
 				Commands:     []entities.Command{},
 			},
 			expectError: false,
@@ -150,9 +155,10 @@ func TestUpdateUserConfig(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 			defer cleanup()
+			dataDir := filepath.Join(tmpDir, "data")
+			filesDir := filepath.Join(dataDir, "files123")
 
-			config.Config.DataFolderPath = tmpDir
-			db, err := database.Connect()
+			db, err := database.Connect(dataDir)
 			if err != nil {
 				t.Fatalf("Cant create db: %v", err)
 			}
@@ -162,31 +168,31 @@ func TestUpdateUserConfig(t *testing.T) {
 					t.Errorf("Error closing db: %v", err)
 				}
 			}(db)
-			filesystemAdaptor, err := filesystem.Connect()
+			filesystemAdapter, err := filesystem.Connect(filesDir)
 			if err != nil {
 				t.Fatalf("Cant set connect filesystem: %v", err)
 			}
-			dataService := NewService(db, db, filesystemAdaptor)
+			userConfigService := NewService(db, db, filesystemAdapter, utils.DetectDefaultConsole())
 
-			err = dataService.SetUserConfig(tc.initialConfig)
+			err = userConfigService.SetUserConfig(&tc.initialConfig)
 			if err != nil {
 				t.Fatalf("Cant set initial config: %v", err)
 			}
 
-			err = dataService.SetUserConfig(tc.newConfig)
+			err = userConfigService.SetUserConfig(&tc.newConfig)
 			if tc.expectError && err == nil {
 				t.Fatalf("Expected error but got none")
 			}
 			if !tc.expectError && err != nil {
 				t.Fatalf("Unexpected error: %v", err)
 			}
-			resultConfig, err := dataService.GetUserConfig()
+			resultConfig, err := userConfigService.GetUserConfig()
 			if err != nil {
 				t.Fatalf("Cant get result config: %v", err)
 			}
 			if !tc.expectError {
-				if !reflect.DeepEqual(resultConfig, tc.expectedConfig) {
-					t.Fatalf("Expected config: %v, got: %v", tc.expectedConfig, resultConfig)
+				if !reflect.DeepEqual(*resultConfig, tc.expectedConfig) {
+					t.Fatalf("Expected config: %v, got: %v", tc.expectedConfig, *resultConfig)
 				}
 			}
 		})

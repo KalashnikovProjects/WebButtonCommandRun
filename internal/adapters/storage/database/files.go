@@ -3,10 +3,10 @@ package database
 import (
 	"errors"
 	"fmt"
-	"reflect"
-
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
+	projectErrors "github.com/KalashnikovProjects/WebButtonCommandRun/internal/errors"
 	"gorm.io/gorm"
+	"reflect"
 )
 
 func (db DB) AppendFile(file *entities.EmbeddedFile) error {
@@ -20,7 +20,7 @@ func (db DB) AppendFile(file *entities.EmbeddedFile) error {
 func (db DB) UpdateFile(commandId, id uint, new *entities.EmbeddedFile) error {
 	result := db.db.Where("id = ? and command_id = ?", id, commandId).Select("*").Updates(new)
 	if result.RowsAffected == 0 {
-		return ErrorNotFound
+		return projectErrors.ErrNotFound
 	}
 	if result.Error != nil {
 		return fmt.Errorf("error in db operation %w", result.Error)
@@ -34,7 +34,7 @@ func (db DB) PatchFile(commandId, id uint, new *entities.EmbeddedFile) error {
 	}
 	result := db.db.Where("id = ? and command_id = ?", id, commandId).Updates(new)
 	if result.RowsAffected == 0 {
-		return ErrorNotFound
+		return projectErrors.ErrNotFound
 	}
 	if result.Error != nil {
 		return fmt.Errorf("error in db operation %w", result.Error)
@@ -45,7 +45,7 @@ func (db DB) PatchFile(commandId, id uint, new *entities.EmbeddedFile) error {
 func (db DB) DeleteFile(commandId, id uint) error {
 	result := db.db.Where("id = ? and command_id = ?", id, commandId).Delete(&entities.EmbeddedFile{})
 	if result.RowsAffected == 0 {
-		return ErrorNotFound
+		return projectErrors.ErrNotFound
 	}
 	if result.Error != nil {
 		return fmt.Errorf("error in db operation %w", result.Error)
@@ -53,18 +53,18 @@ func (db DB) DeleteFile(commandId, id uint) error {
 	return nil
 }
 
-func (db DB) GetFile(commandId, id uint) (entities.EmbeddedFile, error) {
+func (db DB) GetFile(commandId, id uint) (*entities.EmbeddedFile, error) {
 	var data entities.EmbeddedFile
 	result := db.db.Where("id = ? and command_id = ?", id, commandId).Take(&data)
 
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return entities.EmbeddedFile{}, ErrorNotFound
+			return nil, projectErrors.ErrNotFound
 		} else {
-			return entities.EmbeddedFile{}, fmt.Errorf("error in db operation %w", result.Error)
+			return nil, fmt.Errorf("error in db operation %w", result.Error)
 		}
 	}
-	return data, nil
+	return &data, nil
 }
 
 func (db DB) GetCommandFiles(commandId uint) ([]entities.EmbeddedFile, error) {

@@ -1,14 +1,12 @@
 package webserver
 
 import (
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/gofiber/fiber/v2"
 )
 
-func GetJsonConfig(s Services) fiber.Handler {
+func (s *Server) getJsonConfig() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		conf, err := s.Data.GetUserConfig()
+		conf, err := s.userconfig.GetUserConfig()
 		if err != nil {
 			return fiber.ErrInternalServerError
 		}
@@ -16,23 +14,23 @@ func GetJsonConfig(s Services) fiber.Handler {
 	}
 }
 
-func EditJsonConfig(s Services) fiber.Handler {
+func (s *Server) editJsonConfig() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		conf := entities.UserConfigDefaults()
+		conf := s.userconfig.CreateDefaultUserConfig()
 
 		err := c.BodyParser(&conf)
 		if err != nil {
 			return fiber.ErrBadRequest
 		}
-		if err := s.Data.SetUserConfig(conf); err != nil {
+		if err := s.userconfig.SetUserConfig(conf); err != nil {
 			return fiber.ErrInternalServerError
 		}
 		return nil
 	}
 }
 
-func ConsoleUsing(s Services) fiber.Handler {
+func (s *Server) consoleUsing() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		return c.Send([]byte(config.Config.Console))
+		return c.Send([]byte(s.usingConsole))
 	}
 }

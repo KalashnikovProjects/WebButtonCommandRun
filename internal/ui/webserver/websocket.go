@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	projectErrors "github.com/KalashnikovProjects/WebButtonCommandRun/internal/errors"
 	"github.com/gofiber/contrib/websocket"
@@ -27,9 +26,11 @@ type outMessageStruct struct {
 	Data        string `json:"data"`
 }
 
-func RunCommandWebsocket(s Services) fiber.Handler {
+func (s *Server) runCommandWebsocket() fiber.Handler {
 	return websocket.New(func(c *websocket.Conn) {
-		defer c.Close()
+		defer func() {
+			_ = c.Close()
+		}()
 		var (
 			mt  int
 			msg []byte
@@ -75,7 +76,7 @@ func RunCommandWebsocket(s Services) fiber.Handler {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		runningCommand, err := s.Runner.RunCommand(ctx, s.Data, uint(commandId), inputData.Options)
+		runningCommand, err := s.runner.RunCommand(ctx, uint(commandId), inputData.Options)
 		if err != nil {
 			if errors.Is(err, projectErrors.ErrEmptyCommand) {
 				data := websocket.FormatCloseMessage(1002, "empty command")
@@ -117,7 +118,7 @@ func RunCommandWebsocket(s Services) fiber.Handler {
 				cancel()
 			}()
 
-			ticker := time.NewTicker(config.Config.WebsocketWriteInterval)
+			ticker := time.NewTicker(s.websocketWriteInterval)
 			defer ticker.Stop()
 			for {
 				select {
@@ -153,10 +154,6 @@ func RunCommandWebsocket(s Services) fiber.Handler {
 		// Input loop
 		for {
 			if mt, msg, err = c.ReadMessage(); err != nil {
-				data := websocket.FormatCloseMessage(1011, "error reading message")
-				websocketWriteMutex.Lock()
-				_ = c.WriteMessage(websocket.CloseMessage, data)
-				websocketWriteMutex.Unlock()
 				return
 			}
 			if mt == websocket.CloseMessage {

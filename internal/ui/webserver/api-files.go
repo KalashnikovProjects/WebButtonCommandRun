@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	projectErrors "github.com/KalashnikovProjects/WebButtonCommandRun/internal/errors"
 	"github.com/gofiber/fiber/v2"
@@ -15,7 +14,7 @@ import (
 	"strings"
 )
 
-func PostFiles(s Services) fiber.Handler {
+func (s *Server) postFiles() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		ctx := context.Background()
 		commandId, err := c.ParamsInt("command_id")
@@ -49,12 +48,12 @@ func PostFiles(s Services) fiber.Handler {
 							log.Warn(err)
 						}
 					}(src)
-					if err := s.Data.AppendFile(uint(commandId), fileBytes, entities.FileParams{Filename: file.Filename, Size: uint64(file.Size)}); err != nil {
+					if err := s.files.AppendFile(uint(commandId), fileBytes, &entities.FileParams{Filename: file.Filename, Size: uint64(file.Size)}); err != nil {
 						if errors.Is(err, projectErrors.ErrNotFound) {
 							return fiber.ErrNotFound
 						}
 						if errors.Is(err, projectErrors.ErrFileToBig) {
-							return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("too big file (max %d) bytes", config.Config.MaxFileSize))
+							return fiber.NewError(fiber.StatusBadRequest, fmt.Sprintf("too big file (max %d) bytes", s.maxFileSize))
 						}
 						if errors.Is(err, projectErrors.ErrBadName) {
 							return fiber.NewError(fiber.StatusBadRequest, "bad file name")
@@ -73,13 +72,13 @@ func PostFiles(s Services) fiber.Handler {
 	}
 }
 
-func GetCommandFilesList(s Services) fiber.Handler {
+func (s *Server) getCommandFilesList() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		commandId, err := c.ParamsInt("command_id")
 		if err != nil || commandId < 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid command id")
 		}
-		commands, err := s.Data.GetCommandFilesList(uint(commandId))
+		commands, err := s.files.GetCommandFiles(uint(commandId))
 		if errors.Is(err, projectErrors.ErrNotFound) {
 			return fiber.ErrNotFound
 		} else if err != nil {
@@ -89,7 +88,7 @@ func GetCommandFilesList(s Services) fiber.Handler {
 	}
 }
 
-func GetFile(s Services) fiber.Handler {
+func (s *Server) getFile() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		commandId, err := c.ParamsInt("command_id")
 		if err != nil || commandId < 0 {
@@ -99,7 +98,7 @@ func GetFile(s Services) fiber.Handler {
 		if err != nil || fileId < 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid file id")
 		}
-		commands, err := s.Data.GetFile(uint(commandId), uint(fileId))
+		commands, err := s.files.GetFile(uint(commandId), uint(fileId))
 		if errors.Is(err, projectErrors.ErrNotFound) {
 			return fiber.ErrNotFound
 		} else if err != nil {
@@ -109,7 +108,7 @@ func GetFile(s Services) fiber.Handler {
 	}
 }
 
-func PutFile(s Services) fiber.Handler {
+func (s *Server) putFile() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		commandId, err := c.ParamsInt("command_id")
 		if err != nil || commandId < 0 {
@@ -124,7 +123,7 @@ func PutFile(s Services) fiber.Handler {
 		if err != nil {
 			return err
 		}
-		err = s.Data.PutFile(uint(commandId), uint(fileId), file)
+		err = s.files.PutFile(uint(commandId), uint(fileId), &file)
 		if errors.Is(err, projectErrors.ErrNotFound) {
 			return fiber.ErrNotFound
 		} else if errors.Is(err, projectErrors.ErrBadName) {
@@ -136,7 +135,7 @@ func PutFile(s Services) fiber.Handler {
 	}
 }
 
-func PatchFile(s Services) fiber.Handler {
+func (s *Server) patchFile() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		commandId, err := c.ParamsInt("command_id")
 		if err != nil || commandId < 0 {
@@ -151,7 +150,7 @@ func PatchFile(s Services) fiber.Handler {
 		if err != nil {
 			return err
 		}
-		err = s.Data.PatchFile(uint(commandId), uint(fileId), file)
+		err = s.files.PatchFile(uint(commandId), uint(fileId), &file)
 		if errors.Is(err, projectErrors.ErrNotFound) {
 			return fiber.ErrNotFound
 		} else if errors.Is(err, projectErrors.ErrBadName) {
@@ -163,7 +162,7 @@ func PatchFile(s Services) fiber.Handler {
 	}
 }
 
-func DeleteFile(s Services) fiber.Handler {
+func (s *Server) deleteFile() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		commandId, err := c.ParamsInt("command_id")
 		if err != nil || commandId < 0 {
@@ -173,7 +172,7 @@ func DeleteFile(s Services) fiber.Handler {
 		if err != nil || fileId < 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid file id")
 		}
-		err = s.Data.DeleteFile(uint(commandId), uint(fileId))
+		err = s.files.DeleteFile(uint(commandId), uint(fileId))
 		if errors.Is(err, projectErrors.ErrNotFound) {
 			return fiber.ErrNotFound
 		} else if err != nil {
@@ -183,7 +182,7 @@ func DeleteFile(s Services) fiber.Handler {
 	}
 }
 
-func DownloadFile(s Services) fiber.Handler {
+func (s *Server) downloadFile() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		commandId, err := c.ParamsInt("command_id")
 		if err != nil || commandId < 0 {
@@ -193,7 +192,7 @@ func DownloadFile(s Services) fiber.Handler {
 		if err != nil || fileId < 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid file id")
 		}
-		fileData, file, err := s.Data.DownloadFile(uint(commandId), uint(fileId))
+		fileData, file, err := s.files.DownloadFile(uint(commandId), uint(fileId))
 		if err != nil {
 			return fiber.ErrInternalServerError
 		}
@@ -208,9 +207,9 @@ func DownloadFile(s Services) fiber.Handler {
 	}
 }
 
-func DownloadAllFiles(s Services) fiber.Handler {
+func (s *Server) downloadAllFiles() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		archive, err := s.Data.DownloadAllFilesInArchive()
+		archive, err := s.files.DownloadAllFilesInArchive()
 		if err != nil {
 			log.Error(err)
 			return fiber.ErrInternalServerError
@@ -220,13 +219,13 @@ func DownloadAllFiles(s Services) fiber.Handler {
 	}
 }
 
-func DownloadCommandFiles(s Services) fiber.Handler {
+func (s *Server) downloadCommandFiles() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		commandId, err := c.ParamsInt("command_id")
 		if err != nil || commandId < 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid command id")
 		}
-		archive, err := s.Data.DownloadCommandFilesInArchive(uint(commandId))
+		archive, err := s.files.DownloadCommandFilesInArchive(uint(commandId))
 		if err != nil {
 			log.Error(err)
 			return fiber.ErrInternalServerError
@@ -236,7 +235,7 @@ func DownloadCommandFiles(s Services) fiber.Handler {
 	}
 }
 
-func ImportFiles(s Services) fiber.Handler {
+func (s *Server) importFiles() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		form, err := c.MultipartForm()
 		if err != nil {
@@ -263,7 +262,7 @@ func ImportFiles(s Services) fiber.Handler {
 		if err != nil {
 			return fiber.ErrInternalServerError
 		}
-		err = s.Data.ImportAllFilesFromZipArchive(bytes)
+		err = s.files.ImportAllFilesFromZipArchive(bytes)
 		if err != nil {
 			return err
 		}

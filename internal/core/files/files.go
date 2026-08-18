@@ -1,47 +1,48 @@
-package data
+package files
 
 import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	projectErrors "github.com/KalashnikovProjects/WebButtonCommandRun/internal/errors"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/utils"
 	"github.com/gofiber/fiber/v2/log"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 )
 
-func SetDefaultFilesNames(files []entities.EmbeddedFile) {
-	for i := 0; i < len(files); i++ {
-		SetDefaultFileName(&files[i])
+type Service struct {
+	filesDirPath       string
+	maxFileSize        int64
+	commandsRepository CommandsRepository
+	filesRepository    FilesRepository
+	filesystem         Filesystem
+}
+
+func NewService(filesDirPath string, maxFilesSize int64, commandsRepository CommandsRepository, filesRepository FilesRepository, filesystem Filesystem) *Service {
+	return &Service{
+		filesDirPath:       filesDirPath,
+		maxFileSize:        maxFilesSize,
+		commandsRepository: commandsRepository,
+		filesRepository:    filesRepository,
+		filesystem:         filesystem,
 	}
 }
 
-func SetDefaultFileName(file *entities.EmbeddedFile) {
-	if file.Name == "" {
-		file.Name = RandomFileName()
-	}
-}
-
-func RandomFileName() string {
-	return fmt.Sprintf("File %d", rand.Intn(100))
-}
-
-func validateFile(data entities.FileParams) error {
-	if config.Config.MaxFileSize > 0 && int64(data.Size) > config.Config.MaxFileSize {
+func (s Service) validateFile(data *entities.FileParams) error {
+	if s.maxFileSize > 0 && int64(data.Size) > s.maxFileSize {
 		return projectErrors.ErrFileToBig
 	}
-	if err := checkName(data.Filename); err != nil {
+	if err := utils.CheckName(data.Filename); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s service) AppendFile(commandID uint, fileBytes []byte, data entities.FileParams) error {
-	exists, err := s.commandsRepo.CommandExists(commandID)
+func (s Service) AppendFile(commandID uint, fileBytes []byte, data *entities.FileParams) error {
+	exists, err := s.commandsRepository.CommandExists(commandID)
 	if err != nil {
 		return err
 	}
@@ -49,14 +50,14 @@ func (s service) AppendFile(commandID uint, fileBytes []byte, data entities.File
 		return projectErrors.ErrFileToBig
 	}
 
-	if err := validateFile(data); err != nil {
+	if err := s.validateFile(data); err != nil {
 		return err
 	}
 	embeddedFile := entities.EmbeddedFile{
 		CommandID: commandID,
 		Name:      data.Filename,
 	}
-	if err := s.filesRepo.AppendFile(&embeddedFile); err != nil {
+	if err := s.filesRepository.AppendFile(&embeddedFile); err != nil {
 		return err
 	}
 	if err := s.filesystem.SaveFile(embeddedFile.ID, fileBytes); err != nil {
@@ -65,8 +66,8 @@ func (s service) AppendFile(commandID uint, fileBytes []byte, data entities.File
 	return nil
 }
 
-func (s service) DeleteFile(commandId, fileId uint) error {
-	err := s.filesRepo.DeleteFile(commandId, fileId)
+func (s Service) DeleteFile(commandId, fileId uint) error {
+	err := s.filesRepository.DeleteFile(commandId, fileId)
 	if err != nil {
 		return err
 	}
@@ -77,68 +78,68 @@ func (s service) DeleteFile(commandId, fileId uint) error {
 	return nil
 }
 
-func (s service) PatchFile(commandId, fileId uint, newFile entities.EmbeddedFile) error {
+func (s Service) PatchFile(commandId, fileId uint, newFile *entities.EmbeddedFile) error {
 	if newFile.Name != "" {
-		if err := checkName(newFile.Name); err != nil {
+		if err := utils.CheckName(newFile.Name); err != nil {
 			return err
 		}
 	}
-	err := s.filesRepo.PatchFile(commandId, fileId, &newFile)
+	err := s.filesRepository.PatchFile(commandId, fileId, newFile)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s service) PutFile(commandId, fileId uint, newFile entities.EmbeddedFile) error {
-	if err := checkName(newFile.Name); err != nil {
+func (s Service) PutFile(commandId, fileId uint, newFile *entities.EmbeddedFile) error {
+	if err := utils.CheckName(newFile.Name); err != nil {
 		return err
 	}
-	SetDefaultFileName(&newFile)
-	err := s.filesRepo.UpdateFile(commandId, fileId, &newFile)
+	utils.SetDefaultFileName(newFile)
+	err := s.filesRepository.UpdateFile(commandId, fileId, newFile)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s service) GetFile(commandId, fileId uint) (entities.EmbeddedFile, error) {
-	file, err := s.filesRepo.GetFile(commandId, fileId)
+func (s Service) GetFile(commandId, fileId uint) (*entities.EmbeddedFile, error) {
+	file, err := s.filesRepository.GetFile(commandId, fileId)
 	if err != nil {
-		return entities.EmbeddedFile{}, err
+		return nil, err
 	}
 	return file, nil
 }
 
-func (s service) GetCommandFilesList(commandId uint) ([]entities.EmbeddedFile, error) {
-	exists, err := s.commandsRepo.CommandExists(commandId)
+func (s Service) GetCommandFiles(commandId uint) ([]entities.EmbeddedFile, error) {
+	exists, err := s.commandsRepository.CommandExists(commandId)
 	if err != nil {
 		return nil, fmt.Errorf("cant check command exist: %w", err)
 	}
 	if !exists {
 		return nil, projectErrors.ErrNotFound
 	}
-	return s.filesRepo.GetCommandFiles(commandId)
+	return s.filesRepository.GetCommandFiles(commandId)
 }
 
-func (s service) GetAllFilesList() ([]entities.EmbeddedFile, error) {
-	return s.filesRepo.GetAllFiles()
+func (s Service) GetAllFilesList() ([]entities.EmbeddedFile, error) {
+	return s.filesRepository.GetAllFiles()
 }
 
-func (s service) DownloadFile(commandId, fileId uint) (entities.EmbeddedFile, []byte, error) {
+func (s Service) DownloadFile(commandId, fileId uint) (*entities.EmbeddedFile, []byte, error) {
 	fileData, err := s.GetFile(commandId, fileId)
 	if err != nil {
-		return entities.EmbeddedFile{}, nil, err
+		return nil, nil, err
 	}
 	data, err := s.filesystem.GetFileData(fileId)
 	if err != nil {
-		return entities.EmbeddedFile{}, nil, err
+		return nil, nil, err
 	}
 	return fileData, data, err
 }
 
-func (s service) DownloadCommandFilesInArchive(commandId uint) ([]byte, error) {
-	filesDatas, err := s.filesRepo.GetCommandFiles(commandId)
+func (s Service) DownloadCommandFilesInArchive(commandId uint) ([]byte, error) {
+	filesDatas, err := s.filesRepository.GetCommandFiles(commandId)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +164,7 @@ func (s service) DownloadCommandFilesInArchive(commandId uint) ([]byte, error) {
 			if err != nil {
 				return err
 			}
-			sourceFilePath := filepath.Join(config.Config.DataFolderPath, "files", fmt.Sprintf("%d", fileData.ID))
+			sourceFilePath := filepath.Join(s.filesDirPath, fmt.Sprintf("%d", fileData.ID))
 			sourceFile, err := os.Open(sourceFilePath)
 			if err != nil {
 				return err
@@ -198,8 +199,8 @@ func (s service) DownloadCommandFilesInArchive(commandId uint) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (s service) DownloadAllFilesInArchive() ([]byte, error) {
-	filesDatas, err := s.filesRepo.GetAllFilesWithCommandInfo()
+func (s Service) DownloadAllFilesInArchive() ([]byte, error) {
+	filesDatas, err := s.filesRepository.GetAllFilesWithCommandInfo()
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +227,7 @@ func (s service) DownloadAllFilesInArchive() ([]byte, error) {
 			if err != nil {
 				return err
 			}
-			sourceFilePath := filepath.Join(config.Config.DataFolderPath, "files", fmt.Sprintf("%d", fileData.ID))
+			sourceFilePath := filepath.Join(s.filesDirPath, fmt.Sprintf("%d", fileData.ID))
 			sourceFile, err := os.Open(sourceFilePath)
 			if err != nil {
 				return err
@@ -261,15 +262,15 @@ func (s service) DownloadAllFilesInArchive() ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func (s service) clearFiles() error {
-	err := s.filesRepo.DeleteAllFiles()
+func (s Service) clearFiles() error {
+	err := s.filesRepository.DeleteAllFiles()
 	if err != nil {
 		return err
 	}
 	return s.filesystem.ClearFiles()
 }
 
-func (s service) ImportAllFilesFromZipArchive(data []byte) error {
+func (s Service) ImportAllFilesFromZipArchive(data []byte) error {
 	if err := s.clearFiles(); err != nil {
 		return err
 	}
@@ -278,7 +279,7 @@ func (s service) ImportAllFilesFromZipArchive(data []byte) error {
 		return err
 	}
 	for _, file := range filesToAppend {
-		err = s.AppendFile(file.CommandId, file.Bytes, entities.FileParams{Filename: file.Params.Filename, Size: file.Params.Size})
+		err = s.AppendFile(file.CommandId, file.Bytes, &entities.FileParams{Filename: file.Params.Filename, Size: file.Params.Size})
 		if err != nil {
 			return err
 		}

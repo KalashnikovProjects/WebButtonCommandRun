@@ -3,10 +3,10 @@ package database
 import (
 	"errors"
 	"fmt"
-	"reflect"
-
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
+	projectErrors "github.com/KalashnikovProjects/WebButtonCommandRun/internal/errors"
 	"gorm.io/gorm"
+	"reflect"
 )
 
 func (db DB) AppendCommand(command *entities.Command) error {
@@ -20,7 +20,7 @@ func (db DB) AppendCommand(command *entities.Command) error {
 func (db DB) DeleteCommand(id uint) error {
 	result := db.db.Delete(&entities.Command{}, id)
 	if result.RowsAffected == 0 {
-		return ErrorNotFound
+		return projectErrors.ErrNotFound
 	}
 	if result.Error != nil {
 		return fmt.Errorf("error in db operation %w", result.Error)
@@ -33,7 +33,7 @@ func (db DB) GetCommands() ([]entities.Command, error) {
 	result := db.db.Order("ID").Find(&data)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return nil, ErrorNotFound
+			return nil, projectErrors.ErrNotFound
 		} else {
 			return nil, fmt.Errorf("error in db operation %w", result.Error)
 		}
@@ -61,23 +61,23 @@ func (db DB) SetCommands(commands []entities.Command) error {
 	return err
 }
 
-func (db DB) GetCommand(id uint) (entities.Command, error) {
+func (db DB) GetCommand(id uint) (*entities.Command, error) {
 	var data entities.Command
 	result := db.db.Take(&data, id)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-			return entities.Command{}, ErrorNotFound
+			return nil, projectErrors.ErrNotFound
 		} else {
-			return entities.Command{}, fmt.Errorf("error in db operation %w", result.Error)
+			return nil, fmt.Errorf("error in db operation %w", result.Error)
 		}
 	}
-	return data, nil
+	return &data, nil
 }
 
 func (db DB) PutCommand(id uint, new *entities.Command) error {
-	result := db.db.Where("id = ?", id).Select("*").Updates(&new)
+	result := db.db.Where("id = ?", id).Select("*").Updates(new)
 	if result.RowsAffected == 0 {
-		return ErrorNotFound
+		return projectErrors.ErrNotFound
 	}
 	if result.Error != nil {
 		return fmt.Errorf("error in db operation %w", result.Error)
@@ -89,9 +89,9 @@ func (db DB) PatchCommand(id uint, new *entities.Command) error {
 	if reflect.ValueOf(new).IsZero() {
 		return nil
 	}
-	result := db.db.Where("id = ?", id).Updates(&new)
+	result := db.db.Where("id = ?", id).Updates(new)
 	if result.RowsAffected == 0 {
-		return ErrorNotFound
+		return projectErrors.ErrNotFound
 	}
 	if result.Error != nil {
 		return fmt.Errorf("error in db operation %w", result.Error)

@@ -2,13 +2,17 @@
 
 package checker
 
-type Checker struct{}
+type Checker struct {
+	ptyDir string
+}
 
-func New() *Checker {
-	return &Checker{}
+func New(ptyDir string) *Checker {
+	return &Checker{
+		ptyDir: ptyDir,
+	}
 }
 
 // On unix always available
-func (checker *Checker) CheckAvailability() error {
+func (ch *Checker) CheckAvailability() error {
 	return nil
 }

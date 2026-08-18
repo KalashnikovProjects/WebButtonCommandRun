@@ -5,23 +5,26 @@ package checker
 import (
 	"errors"
 	"fmt"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	projectErrors "github.com/KalashnikovProjects/WebButtonCommandRun/internal/errors"
 	"os"
 	"path/filepath"
 )
 
-type Checker struct{}
-
-func New() *Checker {
-	return &Checker{}
+type Checker struct {
+	ptyDir string
 }
 
-func (checker *Checker) CheckAvailability() error {
-	if _, err := os.Stat(filepath.Join(config.Config.RootDir, "pty", "winpty.dll")); errors.Is(err, os.ErrNotExist) {
+func New(ptyDir string) *Checker {
+	return &Checker{
+		ptyDir: ptyDir,
+	}
+}
+
+func (ch *Checker) CheckAvailability() error {
+	if _, err := os.Stat(filepath.Join(ch.ptyDir, "winpty.dll")); errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("%w: winpty.dll file unawailable, %w", projectErrors.WindowsPtyLibUnavailable, err)
 	}
-	if _, err := os.Stat(filepath.Join(config.Config.RootDir, "pty", "winpty-agent.exe")); errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(ch.ptyDir, "winpty-agent.exe")); errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("%w: winpty-agent.exe file unawailable, %w", projectErrors.WindowsPtyLibUnavailable, err)
 	}
 	return nil

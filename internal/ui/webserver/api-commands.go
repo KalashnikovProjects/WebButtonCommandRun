@@ -8,23 +8,23 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 )
 
-func PostCommand(s Services) fiber.Handler {
+func (s *Server) postCommand() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		command := entities.CommandDefaults()
+		command := s.commands.DefaultCommand()
 		err := c.BodyParser(&command)
 		if err != nil {
 			return fiber.ErrBadRequest
 		}
-		if err := s.Data.AppendCommand(command); err != nil {
+		if err := s.commands.AppendCommand(command); err != nil {
 			return fiber.ErrInternalServerError
 		}
 		return nil
 	}
 }
 
-func GetCommands(s Services) fiber.Handler {
+func (s *Server) getCommands() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		commands, err := s.Data.GetCommandsList()
+		commands, err := s.commands.GetCommandsList()
 		if err != nil {
 			return fiber.ErrInternalServerError
 		}
@@ -32,13 +32,13 @@ func GetCommands(s Services) fiber.Handler {
 	}
 }
 
-func GetCommand(s Services) fiber.Handler {
+func (s *Server) getCommand() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id, err := c.ParamsInt("command_id")
 		if err != nil || id < 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid command id")
 		}
-		command, err := s.Data.GetCommand(uint(id))
+		command, err := s.commands.GetCommand(uint(id))
 		if errors.Is(err, projectErrors.ErrNotFound) {
 			return fiber.ErrNotFound
 		} else if err != nil {
@@ -48,7 +48,7 @@ func GetCommand(s Services) fiber.Handler {
 	}
 }
 
-func PatchCommand(s Services) fiber.Handler {
+func (s *Server) patchCommand() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id, err := c.ParamsInt("command_id")
 		if err != nil || id < 0 {
@@ -59,7 +59,7 @@ func PatchCommand(s Services) fiber.Handler {
 		if err != nil {
 			return fiber.ErrBadRequest
 		}
-		err = s.Data.PatchCommand(uint(id), command)
+		err = s.commands.PatchCommand(uint(id), &command)
 		if errors.Is(err, projectErrors.ErrNotFound) {
 			return fiber.ErrNotFound
 		} else if errors.Is(err, projectErrors.ErrBadName) {
@@ -72,18 +72,18 @@ func PatchCommand(s Services) fiber.Handler {
 	}
 }
 
-func PutCommand(s Services) fiber.Handler {
+func (s *Server) putCommand() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id, err := c.ParamsInt("command_id")
 		if err != nil || id < 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid command id")
 		}
-		command := entities.CommandDefaults()
+		command := s.commands.DefaultCommand()
 		err = c.BodyParser(&command)
 		if err != nil {
 			return fiber.ErrBadRequest
 		}
-		err = s.Data.PutCommand(uint(id), command)
+		err = s.commands.PutCommand(uint(id), command)
 		if errors.Is(err, projectErrors.ErrNotFound) {
 			return fiber.ErrNotFound
 		} else if errors.Is(err, projectErrors.ErrBadName) {
@@ -95,13 +95,13 @@ func PutCommand(s Services) fiber.Handler {
 	}
 }
 
-func DeleteCommand(s Services) fiber.Handler {
+func (s *Server) deleteCommand() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id, err := c.ParamsInt("command_id")
 		if err != nil || id < 0 {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid command id")
 		}
-		err = s.Data.DeleteCommand(uint(id))
+		err = s.commands.DeleteCommand(uint(id))
 		if errors.Is(err, projectErrors.ErrNotFound) {
 			return fiber.ErrNotFound
 		}

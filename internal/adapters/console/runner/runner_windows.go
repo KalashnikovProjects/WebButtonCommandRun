@@ -4,13 +4,10 @@ package runner
 
 import (
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/iamacarpet/go-winpty"
+	"io"
+	"os"
 )
 
 type windowsCommand struct {
@@ -18,17 +15,25 @@ type windowsCommand struct {
 }
 
 type Runner struct {
+	console string // cmd
+	ptyDir  string
 }
 
-func New() *Runner {
-	return &Runner{}
+func New(
+	ptyDir string,
+	console string,
+) *Runner {
+	return &Runner{
+		console: console,
+		ptyDir:  ptyDir,
+	}
 }
 
 func (r Runner) RunCommand(command string, options entities.TerminalOptions) (entities.RunningCommand, error) {
 	wp, err := winpty.OpenWithOptions(winpty.Options{
 		Dir:         options.Dir,
-		DLLPrefix:   filepath.Join(config.Config.RootDir, "pty"),
-		Command:     fmt.Sprintf("%s /C %s", config.Config.Console, command),
+		DLLPrefix:   r.ptyDir,
+		Command:     fmt.Sprintf("%s /C %s", r.console, command),
 		Env:         append(append(os.Environ(), "PWD="+options.Dir), options.Env...),
 		InitialRows: uint32(options.Rows),
 		InitialCols: uint32(options.Cols),

@@ -6,24 +6,21 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
-var ErrorNotFound = gorm.ErrRecordNotFound
-
 type DB struct {
 	db gorm.DB
 }
 
-func Connect() (DB, error) {
-	if err := os.MkdirAll(config.Config.DataFolderPath, 0750); err != nil {
+func Connect(databaseDirPath string) (DB, error) {
+	if err := os.MkdirAll(databaseDirPath, 0750); err != nil {
 		return DB{}, fmt.Errorf("error while creating data folder: %w", err)
 	}
 
-	databasePath := filepath.Join(config.Config.DataFolderPath, "data.db")
+	databasePath := filepath.Join(databaseDirPath, "data.db")
 
 	if _, err := os.Stat(databasePath); errors.Is(err, os.ErrNotExist) {
 		f, err := os.Create(databasePath)

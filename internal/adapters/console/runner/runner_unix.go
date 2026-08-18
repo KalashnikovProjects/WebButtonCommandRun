@@ -4,7 +4,6 @@ package runner
 
 import (
 	"fmt"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/creack/pty"
 	"github.com/gofiber/fiber/v2/log"
@@ -19,14 +18,22 @@ type unixCommand struct {
 }
 
 type Runner struct {
+	console string // sh
+	ptyDir  string // only for windows
 }
 
-func New() *Runner {
-	return &Runner{}
+func New(
+	console string,
+	ptyDir string,
+) *Runner {
+	return &Runner{
+		console: console,
+		ptyDir:  ptyDir,
+	}
 }
 
 func (r Runner) RunCommand(command string, options entities.TerminalOptions) (entities.RunningCommand, error) {
-	cmd := exec.Command(config.Config.Console, "-c", command)
+	cmd := exec.Command(r.console, "-c", command)
 	cmd.Dir = options.Dir
 	cmd.Env = append(options.Env, "PWD="+options.Dir)
 

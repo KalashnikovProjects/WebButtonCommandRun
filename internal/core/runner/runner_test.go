@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/console/runner"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/storage/filesystem"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/core/commands"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/core/files"
+	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/utils"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -15,8 +17,6 @@ import (
 	"time"
 
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/adapters/storage/database"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/core/data"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/entities"
 	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/testutils"
 	"github.com/acarl005/stripansi"
@@ -28,25 +28,33 @@ func normalizeOutput(out string) string {
 }
 
 func TestRunCommand_Success(t *testing.T) {
-	_ = config.InitConfigs("../../..")
-	// create temp data folder
-	tempDir, cleanup := testutils.CreateTempDataFolder(t)
+	log.SetLevel(0)
+	tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 	defer cleanup()
+	commandRunDir := filepath.Join(tmpDir, "command_run")
+	_ = os.MkdirAll(commandRunDir, 0750)
+	dataDir := filepath.Join(tmpDir, "data")
+	filesDir := filepath.Join(dataDir, "files123")
+	ptyDir := "../../../pty"
 
-	config.Config.DataFolderPath = tempDir
-
-	db, err := database.Connect()
+	db, err := database.Connect(dataDir)
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
-	defer func() { _ = db.Close() }()
-	runnerAdapter := runner.New()
-	runnerService := NewService(runnerAdapter)
-	filesystemAdapter, err := filesystem.Connect()
+	defer func(u database.DB) {
+		err := db.Close()
+		if err != nil {
+			t.Errorf("Error closing db: %v", err)
+		}
+	}(db)
+	filesystemAdapter, err := filesystem.Connect(filesDir)
 	if err != nil {
-		t.Fatalf("Cant create filesystem connection: %v", err)
+		t.Fatalf("Cant set connect filesystem: %v", err)
 	}
-	dataService := data.NewService(db, db, filesystemAdapter)
+	commandsService := commands.NewService(db, commandRunDir)
+	filesService := files.NewService(filesDir, 1024, db, db, filesystemAdapter)
+	runnerAdapter := runner.New(ptyDir, utils.DetectDefaultConsole())
+	runnerService := NewService(commandRunDir, filesDir, runnerAdapter, commandsService, filesService)
 
 	err = db.SetCommands([]entities.Command{{Name: "Echo", Command: "echo hello", Dir: os.TempDir()}})
 	if err != nil {
@@ -55,7 +63,7 @@ func TestRunCommand_Success(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -84,24 +92,34 @@ func TestRunCommand_Success(t *testing.T) {
 }
 
 func TestRunCommand_InvalidCommand(t *testing.T) {
-	_ = config.InitConfigs("../../..")
-	// create temp data folder
-	tempDir, cleanup := testutils.CreateTempDataFolder(t)
+	log.SetLevel(0)
+	tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 	defer cleanup()
+	commandRunDir := filepath.Join(tmpDir, "command_run")
+	_ = os.MkdirAll(commandRunDir, 0750)
+	dataDir := filepath.Join(tmpDir, "data")
+	filesDir := filepath.Join(dataDir, "files123")
+	ptyDir := "../../../pty"
 
-	config.Config.DataFolderPath = tempDir
-	db, err := database.Connect()
+	db, err := database.Connect(dataDir)
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
-	defer func() { _ = db.Close() }()
-	runnerAdapter := runner.New()
-	runnerService := NewService(runnerAdapter)
-	filesystemAdapter, err := filesystem.Connect()
+	defer func(u database.DB) {
+		err := db.Close()
+		if err != nil {
+			t.Errorf("Error closing db: %v", err)
+		}
+	}(db)
+	filesystemAdapter, err := filesystem.Connect(filesDir)
 	if err != nil {
-		t.Fatalf("Cant create filesystem connection: %v", err)
+		t.Fatalf("Cant set connect filesystem: %v", err)
 	}
-	dataService := data.NewService(db, db, filesystemAdapter)
+	commandsService := commands.NewService(db, commandRunDir)
+	filesService := files.NewService(filesDir, 1024, db, db, filesystemAdapter)
+	runnerAdapter := runner.New(ptyDir, utils.DetectDefaultConsole())
+	runnerService := NewService(commandRunDir, filesDir, runnerAdapter, commandsService, filesService)
+
 	// seed invalid command
 	err = db.SetCommands([]entities.Command{{Name: "Bad", Command: "nonexistentcommand1234", Dir: os.TempDir()}})
 	if err != nil {
@@ -110,7 +128,7 @@ func TestRunCommand_InvalidCommand(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -136,32 +154,43 @@ func TestRunCommand_InvalidCommand(t *testing.T) {
 }
 
 func TestRunCommand_ContextCancel(t *testing.T) {
-	_ = config.InitConfigs("../../..")
+	log.SetLevel(0)
 	ctx, cancel := context.WithCancel(context.Background())
-	// create temp Usecases
-	// create temp data folder
-	tempDir, cleanup := testutils.CreateTempDataFolder(t)
-	defer cleanup()
+	defer cancel()
 
-	config.Config.DataFolderPath = tempDir
-	db, err := database.Connect()
+	tmpDir, cleanup := testutils.CreateTempDataFolder(t)
+	defer cleanup()
+	commandRunDir := filepath.Join(tmpDir, "command_run")
+	_ = os.MkdirAll(commandRunDir, 0750)
+	dataDir := filepath.Join(tmpDir, "data")
+	filesDir := filepath.Join(dataDir, "files123")
+	ptyDir := "../../../pty"
+
+	db, err := database.Connect(dataDir)
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
-	defer func() { _ = db.Close() }()
-	runnerAdapter := runner.New()
-	runnerService := NewService(runnerAdapter)
-	filesystemAdapter, err := filesystem.Connect()
+	defer func(u database.DB) {
+		err := db.Close()
+		if err != nil {
+			t.Errorf("Error closing db: %v", err)
+		}
+	}(db)
+	filesystemAdapter, err := filesystem.Connect(filesDir)
 	if err != nil {
-		t.Fatalf("Cant create filesystem connection: %v", err)
+		t.Fatalf("Cant set connect filesystem: %v", err)
 	}
-	dataService := data.NewService(db, db, filesystemAdapter)
+	commandsService := commands.NewService(db, commandRunDir)
+	filesService := files.NewService(filesDir, 1024, db, db, filesystemAdapter)
+	runnerAdapter := runner.New(ptyDir, utils.DetectDefaultConsole())
+	runnerService := NewService(commandRunDir, filesDir, runnerAdapter, commandsService, filesService)
+
 	// seed long-running command
 	err = db.SetCommands([]entities.Command{{Name: "Ping", Command: "ping 127.0.0.1", Dir: os.TempDir()}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
-	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -181,7 +210,8 @@ func TestRunCommand_ContextCancel(t *testing.T) {
 }
 
 func TestRunCommand_PythonInteractive(t *testing.T) {
-	_ = config.InitConfigs("../../..")
+	log.SetLevel(0)
+
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 	pythonCmd := "python3"
@@ -193,30 +223,39 @@ func TestRunCommand_PythonInteractive(t *testing.T) {
 		}
 	}
 
-	// create temp data folder
-	tempDir, cleanup := testutils.CreateTempDataFolder(t)
+	tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 	defer cleanup()
+	commandRunDir := filepath.Join(tmpDir, "command_run")
+	_ = os.MkdirAll(commandRunDir, 0750)
+	dataDir := filepath.Join(tmpDir, "data")
+	filesDir := filepath.Join(dataDir, "files123")
+	ptyDir := "../../../pty"
 
-	config.Config.DataFolderPath = tempDir
-	db, err := database.Connect()
+	db, err := database.Connect(dataDir)
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
-	defer func() { _ = db.Close() }()
-	runnerAdapter := runner.New()
-	runnerService := NewService(runnerAdapter)
-	filesystemAdapter, err := filesystem.Connect()
+	defer func(u database.DB) {
+		err := db.Close()
+		if err != nil {
+			t.Errorf("Error closing db: %v", err)
+		}
+	}(db)
+	filesystemAdapter, err := filesystem.Connect(filesDir)
 	if err != nil {
-		t.Fatalf("Cant create filesystem connection: %v", err)
+		t.Fatalf("Cant set connect filesystem: %v", err)
 	}
-	dataService := data.NewService(db, db, filesystemAdapter)
+	commandsService := commands.NewService(db, commandRunDir)
+	filesService := files.NewService(filesDir, 1024, db, db, filesystemAdapter)
+	runnerAdapter := runner.New(ptyDir, utils.DetectDefaultConsole())
+	runnerService := NewService(commandRunDir, filesDir, runnerAdapter, commandsService, filesService)
 	// seed python command
 	err = db.SetCommands([]entities.Command{{Name: "Py", Command: pythonCmd, Dir: os.TempDir()}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
 
-	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -250,38 +289,37 @@ func TestRunCommand_PythonInteractive(t *testing.T) {
 }
 
 func TestRunCommand_EditFile(t *testing.T) {
-	_ = config.InitConfigs("../../..")
+	log.SetLevel(0)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	usr, err := user.Current()
-	if err != nil {
-		t.Fatalf("error getting current user: %v", err)
-	}
-	// working directory for command
-	workDir, err := os.MkdirTemp(usr.HomeDir, "workdir_*")
-	if err != nil {
-		t.Fatalf("cant create temp workdir: %v", err)
-	}
-	defer func() { _ = os.RemoveAll(workDir) }()
-
 	// create temp data folder
-	tempDir, cleanup := testutils.CreateTempDataFolder(t)
+	tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 	defer cleanup()
+	commandRunDir := filepath.Join(tmpDir, "command_run")
+	_ = os.MkdirAll(commandRunDir, 0750)
+	dataDir := filepath.Join(tmpDir, "data")
+	filesDir := filepath.Join(dataDir, "files123")
+	ptyDir := "../../../pty"
 
-	config.Config.DataFolderPath = tempDir
-	db, err := database.Connect()
+	db, err := database.Connect(dataDir)
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
-	defer func() { _ = db.Close() }()
-	runnerAdapter := runner.New()
-	runnerService := NewService(runnerAdapter)
-	filesystemAdapter, err := filesystem.Connect()
+	defer func(u database.DB) {
+		err := db.Close()
+		if err != nil {
+			t.Errorf("Error closing db: %v", err)
+		}
+	}(db)
+	filesystemAdapter, err := filesystem.Connect(filesDir)
 	if err != nil {
-		t.Fatalf("Cant create filesystem connection: %v", err)
+		t.Fatalf("Cant set connect filesystem: %v", err)
 	}
-	dataService := data.NewService(db, db, filesystemAdapter)
+	commandsService := commands.NewService(db, commandRunDir)
+	filesService := files.NewService(filesDir, 100*1024, db, db, filesystemAdapter)
+	runnerAdapter := runner.New(ptyDir, utils.DetectDefaultConsole())
+	runnerService := NewService(commandRunDir, filesDir, runnerAdapter, commandsService, filesService)
 
 	var commandText string
 	fileName := "embedded_test.txt"
@@ -290,18 +328,18 @@ func TestRunCommand_EditFile(t *testing.T) {
 	} else {
 		commandText = fmt.Sprintf("cat %s", fileName)
 	}
-	err = db.SetCommands([]entities.Command{{Name: "WithFile", Command: commandText, Dir: workDir}})
+	err = db.SetCommands([]entities.Command{{Name: "WithFile", Command: commandText, Dir: commandRunDir}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
 	// attach embedded file content
 	fileContent := []byte("Hello from embedded file\n")
-	err = dataService.AppendFile(1, fileContent, entities.FileParams{Filename: fileName, Size: uint64(len(fileContent))})
+	err = filesService.AppendFile(1, fileContent, &entities.FileParams{Filename: fileName, Size: uint64(len(fileContent))})
 	if err != nil {
 		t.Fatalf("cant append file: %v", err)
 	}
 
-	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -329,43 +367,43 @@ func TestRunCommand_EditFile(t *testing.T) {
 		t.Fatalf("unexpected output: %q", out)
 	}
 	// ensure file was cleaned up from workDir
-	if _, err := os.Stat(filepath.Join(workDir, fileName)); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(commandRunDir, fileName)); !os.IsNotExist(err) {
 		t.Fatalf("embedded file was not removed from workDir: %v", err)
 	}
 }
 
 func TestRunCommand_ExecutionDir(t *testing.T) {
-	_ = config.InitConfigs("../../..")
+	log.SetLevel(0)
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	usr, err := user.Current()
-	if err != nil {
-		t.Fatalf("error getting current user: %v", err)
-	}
-	workDir, err := os.MkdirTemp(usr.HomeDir, "workdir_cwd_*")
-	if err != nil {
-		t.Fatalf("cant create temp workdir: %v", err)
-	}
-	defer func() { _ = os.RemoveAll(workDir) }()
-
-	// create temp data folder
-	tempDir, cleanup := testutils.CreateTempDataFolder(t)
+	tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 	defer cleanup()
+	commandRunDir := filepath.Join(tmpDir, "command_run123")
+	_ = os.MkdirAll(commandRunDir, 0750)
 
-	config.Config.DataFolderPath = tempDir
-	db, err := database.Connect()
+	dataDir := filepath.Join(tmpDir, "data")
+	filesDir := filepath.Join(dataDir, "files123")
+	ptyDir := "../../../pty"
+
+	db, err := database.Connect(dataDir)
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
-	defer func() { _ = db.Close() }()
-	runnerAdapter := runner.New()
-	runnerService := NewService(runnerAdapter)
-	filesystemAdapter, err := filesystem.Connect()
+	defer func(u database.DB) {
+		err := db.Close()
+		if err != nil {
+			t.Errorf("Error closing db: %v", err)
+		}
+	}(db)
+	filesystemAdapter, err := filesystem.Connect(filesDir)
 	if err != nil {
-		t.Fatalf("Cant create filesystem connection: %v", err)
+		t.Fatalf("Cant set connect filesystem: %v", err)
 	}
-	dataService := data.NewService(db, db, filesystemAdapter)
+	commandsService := commands.NewService(db, commandRunDir)
+	filesService := files.NewService(filesDir, 1024, db, db, filesystemAdapter)
+	runnerAdapter := runner.New(ptyDir, utils.DetectDefaultConsole())
+	runnerService := NewService(commandRunDir, filesDir, runnerAdapter, commandsService, filesService)
 
 	var commandText string
 	if runtime.GOOS == "windows" {
@@ -373,12 +411,12 @@ func TestRunCommand_ExecutionDir(t *testing.T) {
 	} else {
 		commandText = "pwd"
 	}
-	err = db.SetCommands([]entities.Command{{Name: "CWD", Command: commandText, Dir: workDir}})
+	err = db.SetCommands([]entities.Command{{Name: "CWD", Command: commandText, Dir: commandRunDir}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
 
-	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -400,47 +438,57 @@ func TestRunCommand_ExecutionDir(t *testing.T) {
 	}
 	out := strings.Trim(normalizeOutput(result), "\r")
 	if runtime.GOOS == "windows" {
-		if !strings.EqualFold(out, workDir) {
-			t.Fatalf("unexpected cwd: %q, want %q", out, workDir)
+		if !strings.EqualFold(out, commandRunDir) {
+			t.Fatalf("unexpected cwd: %q, want %q", out, commandRunDir)
 		}
 	} else {
-		if out != workDir {
-			t.Fatalf("unexpected cwd: %q, want %q", out, workDir)
+		if out != commandRunDir {
+			t.Fatalf("unexpected cwd: %q, want %q", out, commandRunDir)
 		}
 	}
 }
 
 func TestRunCommand_WithFile(t *testing.T) {
-	_ = config.InitConfigs("../../..")
-	// create temp data folder
-	tempDir, cleanup := testutils.CreateTempDataFolder(t)
+	log.SetLevel(0)
+	tmpDir, cleanup := testutils.CreateTempDataFolder(t)
 	defer cleanup()
+	commandRunDir := filepath.Join(tmpDir, "command_run123")
+	_ = os.MkdirAll(commandRunDir, 0750)
+	dataDir := filepath.Join(tmpDir, "data")
+	filesDir := filepath.Join(dataDir, "files123")
+	ptyDir := "../../../pty"
 
-	config.Config.DataFolderPath = tempDir
-	db, err := database.Connect()
+	db, err := database.Connect(dataDir)
 	if err != nil {
 		t.Fatalf("Cant create db: %v", err)
 	}
-	defer func() { _ = db.Close() }()
-	runnerAdapter := runner.New()
-	runnerService := NewService(runnerAdapter)
-	filesystemAdapter, err := filesystem.Connect()
+	defer func(u database.DB) {
+		err := db.Close()
+		if err != nil {
+			t.Errorf("Error closing db: %v", err)
+		}
+	}(db)
+	filesystemAdapter, err := filesystem.Connect(filesDir)
 	if err != nil {
-		t.Fatalf("Cant create filesystem connection: %v", err)
+		t.Fatalf("Cant set connect filesystem: %v", err)
 	}
-	dataService := data.NewService(db, db, filesystemAdapter)
+	commandsService := commands.NewService(db, commandRunDir)
+	filesService := files.NewService(filesDir, 1024, db, db, filesystemAdapter)
+	runnerAdapter := runner.New(ptyDir, utils.DetectDefaultConsole())
+	runnerService := NewService(commandRunDir, filesDir, runnerAdapter, commandsService, filesService)
+
 	err = db.SetCommands([]entities.Command{{Name: "Test", Command: "more test-file.txt", Dir: os.TempDir()}})
 	if err != nil {
 		t.Fatalf("cant set config: %v", err)
 	}
-	err = dataService.AppendFile(1, []byte("test data"), entities.FileParams{Filename: "test-file.txt", Size: uint64(len([]byte("test data")))})
+	err = filesService.AppendFile(1, []byte("test data"), &entities.FileParams{Filename: "test-file.txt", Size: uint64(len([]byte("test data")))})
 	if err != nil {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	command, err := runnerService.RunCommand(ctx, dataService, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
+	command, err := runnerService.RunCommand(ctx, 1, entities.TerminalOptions{Rows: 30, Cols: 120})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

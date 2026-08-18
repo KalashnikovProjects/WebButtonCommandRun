@@ -3,12 +3,11 @@ package webserver
 import (
 	"path/filepath"
 
-	"github.com/KalashnikovProjects/WebButtonCommandRun/internal/config"
 	"github.com/gofiber/fiber/v2"
 )
 
-func GetIndex(s Services) fiber.Handler {
+func (s *Server) getIndex() fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		return c.SendFile(filepath.Join(config.Config.RootDir, "/web/templates/index.html"))
+		return c.SendFile(filepath.Join(s.rootDir, "/web/templates/index.html"))
 	}
 }
